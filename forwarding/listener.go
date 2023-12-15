@@ -12,12 +12,31 @@ import (
 	"github.com/powerpuffpenguin/sf/config"
 )
 
-var ErrBasicListener = errors.New("basic listener closed")
+var ErrListenerClosed = errors.New("listener already closed")
 
 type Listener interface {
 	Close() (e error)
 	Serve() (e error)
 }
+
+func NewListener(log *slog.Logger, dialer map[string]Dialer, opts *config.Listener) (l Listener, e error) {
+	switch opts.Mode {
+	case "basic", "":
+		if found, ok := dialer[opts.Dialer]; ok {
+			l, e = NewBasicListener(log, found, &opts.BasicListener)
+		} else {
+			e = errors.New(`dialer not found: ` + opts.Dialer)
+			log.Error(`dialer not found`, `dialer`, opts.Mode)
+		}
+	case "http":
+		l, e = NewHttpListener(log, dialer, &opts.BasicListener)
+	default:
+		e = errors.New(`listener mode not supported: ` + opts.Mode)
+		log.Error(`listener mode not supported`, `mode`, opts.Mode)
+	}
+	return
+}
+
 type BasicListener struct {
 	listener net.Listener
 	dialer   Dialer
@@ -26,31 +45,30 @@ type BasicListener struct {
 	duration time.Duration
 }
 
-func NewBasicListener(log *slog.Logger, opts *config.BasicListener) (listener *BasicListener, e error) {
+func NewBasicListener(log *slog.Logger, dialer Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
-		newlog = log.With(`mode`, `basic`)
 	)
 	if opts.CertFile != `` && opts.KeyFile != `` {
 		secure = true
 		var certificate tls.Certificate
 		certificate, e = tls.LoadX509KeyPair(opts.CertFile, opts.KeyFile)
 		if e != nil {
-			newlog.Error(`new basic listener fail`, `error`, e)
+			log.Error(`new basic listener fail`, `error`, e)
 			return
 		}
 		l, e = tls.Listen(opts.Network, opts.Address, &tls.Config{
 			Certificates: []tls.Certificate{certificate},
 		})
 		if e != nil {
-			newlog.Error(`new basic listener fail`, `error`, e)
+			log.Error(`new basic listener fail`, `error`, e)
 			return
 		}
 	} else {
 		l, e = net.Listen(opts.Network, opts.Address)
 		if e != nil {
-			newlog.Error(`new basic listener fail`, `error`, e)
+			log.Error(`new basic listener fail`, `error`, e)
 			return
 		}
 	}
@@ -64,13 +82,26 @@ func NewBasicListener(log *slog.Logger, opts *config.BasicListener) (listener *B
 			tag = `basic ` + addr.Network() + `://` + addr.String()
 		}
 	}
-	newlog = log.With(`tag`, tag)
-
-	duration, _ := time.ParseDuration(opts.Close)
-	newlog.Info(`new basic listener`, `close`, duration)
+	log = log.With(`listener`, tag)
+	var duration time.Duration
+	if opts.Close == `` {
+		duration = time.Second
+	} else {
+		var err error
+		duration, err = time.ParseDuration(opts.Close)
+		if err != nil {
+			duration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, err,
+				`close`, duration,
+			)
+		}
+	}
+	log.Info(`new basic listener`, `close`, duration)
 	listener = &BasicListener{
 		listener: l,
-		log:      newlog,
+		dialer:   dialer,
+		log:      log,
 		duration: duration,
 	}
 	return
@@ -79,7 +110,7 @@ func (l *BasicListener) Close() (e error) {
 	if l.closed != 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
 		e = l.listener.Close()
 	} else {
-		e = ErrBasicListener
+		e = ErrListenerClosed
 	}
 	return
 }
@@ -89,7 +120,7 @@ func (l *BasicListener) Serve() error {
 		rw, err := l.listener.Accept()
 		if err != nil {
 			if l.closed != 0 && atomic.LoadUint32(&l.closed) != 0 {
-				return ErrBasicListener
+				return ErrListenerClosed
 			}
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
@@ -115,10 +146,11 @@ func (l *BasicListener) Serve() error {
 func (l *BasicListener) serve(src net.Conn) {
 	defer src.Close()
 	src.RemoteAddr()
-	dst, addr, e := l.dialer.Connect(context.Background())
+	dst, e := l.dialer.Connect(context.Background())
 	if e != nil {
 		return
 	}
+	addr := dst.RemoteAddr()
 	l.log.Info("bridge",
 		`network`, addr.Network,
 		`addr`, addr.Addr,
@@ -131,7 +163,7 @@ func (l *BasicListener) serve(src net.Conn) {
 type HttpListener struct {
 }
 
-func NewHttpListener(opts *config.BasicListener) (listener *HttpListener, e error) {
+func NewHttpListener(log *slog.Logger, dialer map[string]Dialer, opts *config.BasicListener) (listener *HttpListener, e error) {
 	return
 }
 func (l *HttpListener) Close() (e error) {

@@ -19,34 +19,38 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		return
 	}
 	var (
+		tag      string
+		dialer   = make(map[string]Dialer, len(conf.Dialer))
+		d        Dialer
+		exists   bool
 		listener = make([]Listener, 0, len(conf.Listener))
 		l        Listener
 	)
-	for _, opts := range conf.Listener {
-		switch opts.Mode {
-		case "basic", "":
-			l, e = NewBasicListener(log, &opts.BasicListener)
-			if e != nil {
-				for _, l = range listener {
-					l.Close()
-				}
-				return
-			}
-			listener = append(listener, l)
-		case "http":
-			l, e = NewHttpListener(&opts.BasicListener)
-			if e != nil {
-				for _, l = range listener {
-					l.Close()
-				}
-				return
-			}
-			listener = append(listener, l)
-		default:
-			e = fmt.Errorf(`listener mode: %s`, opts.Mode)
-			log.Error(`listener mode`, `mode`, opts.Mode)
+	for _, opts := range conf.Dialer {
+		tag = opts.Tag
+		if _, exists = dialer[tag]; exists {
+			e = fmt.Errorf(`dialer tag repeat: %s`, opts.Tag)
+			log.Error(`dialer tag repeat`, `tag`, opts.Tag)
 			return
 		}
+		d, e = NewDialer(log, opts)
+		if e != nil {
+			for _, d = range dialer {
+				d.Close()
+			}
+			return
+		}
+		dialer[opts.Tag] = d
+	}
+	for _, opts := range conf.Listener {
+		l, e = NewListener(log, dialer, opts)
+		if e != nil {
+			for _, l = range listener {
+				l.Close()
+			}
+			return
+		}
+		listener = append(listener, l)
 	}
 	app = &Application{
 		listener: listener,

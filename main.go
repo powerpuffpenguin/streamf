@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"runtime"
 
@@ -14,19 +13,6 @@ import (
 )
 
 func main() {
-	u, err := url.Parse(`unix+tls://cf.socket/pp`)
-	if err != nil {
-		log.Fatalln(err)
-	} else {
-		fmt.Println(u)
-		fmt.Println(u.Scheme)
-		fmt.Println(u.Host)
-		fmt.Println(u.Path)
-		fmt.Println(u.User == nil)
-		fmt.Println(u.Hostname())
-		return
-	}
-
 	var (
 		conf          string
 		version, help bool

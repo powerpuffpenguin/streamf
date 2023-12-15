@@ -10,6 +10,8 @@ type Config struct {
 	Logger Logger `json:"logger"`
 	// Listener to receive incoming traffic
 	Listener []*Listener `json:"listener"`
+	// Outgoing traffic, how to connect to the remote end
+	Dialer []*Dialer `json:"dialer"`
 }
 
 func (c *Config) Load(filename string) (e error) {
