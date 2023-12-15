@@ -1,51 +1,26 @@
-package forwarding
+package listener
 
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"log/slog"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/dialer"
 )
-
-var ErrListenerClosed = errors.New("listener already closed")
-
-type Listener interface {
-	Close() (e error)
-	Serve() (e error)
-}
-
-func NewListener(log *slog.Logger, dialer map[string]Dialer, opts *config.Listener) (l Listener, e error) {
-	switch opts.Mode {
-	case "basic", "":
-		if found, ok := dialer[opts.Dialer]; ok {
-			l, e = NewBasicListener(log, found, &opts.BasicListener)
-		} else {
-			e = errors.New(`dialer not found: ` + opts.Dialer)
-			log.Error(`dialer not found`, `dialer`, opts.Mode)
-		}
-	case "http":
-		l, e = NewHttpListener(log, dialer, &opts.BasicListener)
-	default:
-		e = errors.New(`listener mode not supported: ` + opts.Mode)
-		log.Error(`listener mode not supported`, `mode`, opts.Mode)
-	}
-	return
-}
 
 type BasicListener struct {
 	listener net.Listener
-	dialer   Dialer
+	dialer   dialer.Dialer
 	log      *slog.Logger
 	closed   uint32
 	duration time.Duration
 }
 
-func NewBasicListener(log *slog.Logger, dialer Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
+func NewBasicListener(log *slog.Logger, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
@@ -110,7 +85,7 @@ func (l *BasicListener) Close() (e error) {
 	if l.closed != 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
 		e = l.listener.Close()
 	} else {
-		e = ErrListenerClosed
+		e = ErrClosed
 	}
 	return
 }
@@ -120,7 +95,7 @@ func (l *BasicListener) Serve() error {
 		rw, err := l.listener.Accept()
 		if err != nil {
 			if l.closed != 0 && atomic.LoadUint32(&l.closed) != 0 {
-				return ErrListenerClosed
+				return ErrClosed
 			}
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
@@ -158,17 +133,4 @@ func (l *BasicListener) serve(src net.Conn) {
 		`url`, addr.URL,
 	)
 	bridging(src, dst, l.duration)
-}
-
-type HttpListener struct {
-}
-
-func NewHttpListener(log *slog.Logger, dialer map[string]Dialer, opts *config.BasicListener) (listener *HttpListener, e error) {
-	return
-}
-func (l *HttpListener) Close() (e error) {
-	return
-}
-func (l *HttpListener) Serve() (e error) {
-	return
 }
