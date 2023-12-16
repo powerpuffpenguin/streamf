@@ -17,7 +17,6 @@ type UnixDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	duration   time.Duration
-	host       string
 	remoteAddr RemoteAddr
 	dialer     interface {
 		DialContext(context.Context, string, string) (net.Conn, error)
@@ -40,9 +39,17 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 			)
 		}
 	}
-	var host string
+	var (
+		network string
+		addr    string
+	)
+	if opts.Network == `` {
+		network = `unix`
+	} else {
+		network = opts.Network
+	}
 	if opts.Addr == `` {
-		host = u.Host
+		addr = u.Host
 		rawURL := opts.URL[len(u.Scheme)+3:]
 		if strings.HasPrefix(rawURL, `@`) {
 			var (
@@ -64,11 +71,13 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 				return
 			}
 			if prefix == `X` {
-				host = `@` + u.Host[1:]
+				addr = `@` + u.Host[1:]
 			} else {
-				host = `@@` + u.Host[2:]
+				addr = `@@` + u.Host[2:]
 			}
 		}
+	} else {
+		addr = opts.Addr
 	}
 	log.Info(`new dialer`,
 		`url`, opts.URL,
@@ -77,11 +86,10 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 	dialer = &UnixDialer{
 		done:     make(chan struct{}),
 		duration: duration,
-		host:     host,
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
-			Network: u.Scheme,
-			Addr:    opts.Addr,
+			Network: network,
+			Addr:    addr,
 			Secure:  secure,
 			URL:     opts.URL,
 		},
@@ -118,7 +126,7 @@ func (t *UnixDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	}
 	ch := make(chan connectResult)
 	go func() {
-		conn, e := t.connect(ctx)
+		conn, e := t.dialer.DialContext(ctx, t.remoteAddr.Network, t.remoteAddr.Addr)
 		if e == nil {
 			select {
 			case ch <- connectResult{
@@ -149,14 +157,6 @@ func (t *UnixDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
-	}
-	return
-}
-func (t *UnixDialer) connect(ctx context.Context) (conn net.Conn, e error) {
-	if t.host == `` {
-		conn, e = t.dialer.DialContext(ctx, `unix`, t.remoteAddr.Addr)
-	} else {
-		conn, e = t.dialer.DialContext(ctx, `unix`, t.host)
 	}
 	return
 }

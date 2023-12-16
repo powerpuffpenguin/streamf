@@ -3,6 +3,10 @@
     level: 'debug',
     // source: true,
   },
+  pool: {
+    size: 1024 * 32,
+    cache: 128,
+  },
   dialer: [
     {
       tag: 'tcp',
@@ -26,6 +30,21 @@
       tag: 'unix+tls',
       timeout: '200ms',
       url: 'unix+tls://@tcp-https.socket',
+      allowInsecure: true,
+    },
+    {
+      tag: 'ws',
+      timeout: '200ms',
+      url: 'ws://example.com/test/ws',
+      addr: '@tcp-http.socket',
+      network: 'unix',
+    },
+    {
+      tag: 'wss',
+      timeout: '200ms',
+      url: 'wss://example.com/test/wss',
+      addr: '@tcp-https.socket',
+      network: 'unix',
       allowInsecure: true,
     },
   ],
@@ -52,7 +71,7 @@
     },
     {
       network: 'tcp',
-      address: ':3433',
+      address: ':3443',
       certFile: 'test.crt',
       keyFile: 'test.key',
       close: '1s',

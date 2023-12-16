@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Logger Logger `json:"logger"`
+	Pool   Pool   `json:"pool"`
 	// Listener to receive incoming traffic
 	Listener []*Listener `json:"listener"`
 	// Outgoing traffic, how to connect to the remote end

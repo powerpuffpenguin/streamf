@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/powerpuffpenguin/sf/third-party/websocket"
 )
 
 type websocketConn interface {

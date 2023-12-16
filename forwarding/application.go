@@ -8,6 +8,7 @@ import (
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/dialer"
 	"github.com/powerpuffpenguin/sf/listener"
+	"github.com/powerpuffpenguin/sf/pool"
 )
 
 type Application struct {
@@ -27,6 +28,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		exists    bool
 		listeners = make([]listener.Listener, 0, len(conf.Listener))
 		l         listener.Listener
+		pool      = pool.New(&conf.Pool)
 	)
 	for _, opts := range conf.Dialer {
 		tag = opts.Tag
@@ -35,7 +37,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 			log.Error(`dialer tag repeat`, `tag`, opts.Tag)
 			return
 		}
-		d, e = dialer.New(log, opts)
+		d, e = dialer.New(log, pool, opts)
 		if e != nil {
 			for _, d = range dialers {
 				d.Close()

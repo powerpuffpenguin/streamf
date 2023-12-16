@@ -18,6 +18,11 @@ type Dialer struct {
 	URL string `json:"url"`
 	// optional connect address
 	Addr string `json:"addr"`
+	// optional network
+	Network string `json:"network"`
 	// If true, do not verify whether the certificate is valid when connecting to the tls server
 	AllowInsecure bool `json:"allowInsecure"`
+
+	// http method, default "PUT"
+	Method string
 }

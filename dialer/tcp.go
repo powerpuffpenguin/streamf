@@ -16,7 +16,6 @@ type TcpDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	duration   time.Duration
-	host       string
 	remoteAddr RemoteAddr
 	dialer     interface {
 		DialContext(context.Context, string, string) (net.Conn, error)
@@ -43,18 +42,27 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 		`url`, opts.URL,
 		`timeout`, duration,
 	)
-	var host string
+	var (
+		network string
+		addr    string
+	)
+	if opts.Network == `` {
+		network = `tcp`
+	} else {
+		network = opts.Network
+	}
 	if opts.Addr == `` {
-		host = u.Host
+		addr = u.Host
+	} else {
+		addr = opts.Addr
 	}
 	dialer = &TcpDialer{
 		done:     make(chan struct{}),
 		duration: duration,
-		host:     host,
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
-			Network: u.Scheme,
-			Addr:    opts.Addr,
+			Network: network,
+			Addr:    addr,
 			Secure:  secure,
 			URL:     opts.URL,
 		},
@@ -91,7 +99,7 @@ func (t *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	}
 	ch := make(chan connectResult)
 	go func() {
-		conn, e := t.connect(ctx)
+		conn, e := t.dialer.DialContext(ctx, t.remoteAddr.Network, t.remoteAddr.Addr)
 		if e == nil {
 			select {
 			case ch <- connectResult{
@@ -122,14 +130,6 @@ func (t *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
-	}
-	return
-}
-func (t *TcpDialer) connect(ctx context.Context) (conn net.Conn, e error) {
-	if t.host == `` {
-		conn, e = t.dialer.DialContext(ctx, `tcp`, t.remoteAddr.Addr)
-	} else {
-		conn, e = t.dialer.DialContext(ctx, `tcp`, t.host)
 	}
 	return
 }

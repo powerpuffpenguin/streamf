@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/pool"
 )
 
 const (
@@ -27,7 +28,7 @@ type Dialer interface {
 	Close() (e error)
 }
 
-func New(log *slog.Logger, opts *config.Dialer) (dialer Dialer, e error) {
+func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer, e error) {
 	if opts.Tag == `` {
 		e = errTagEmpty
 		log.Error(`tag must not be empty`)
@@ -40,9 +41,9 @@ func New(log *slog.Logger, opts *config.Dialer) (dialer Dialer, e error) {
 	}
 	switch u.Scheme {
 	case Websocket:
-		dialer, e = newWebsocketDialer(log, opts, u, false)
+		dialer, e = newWebsocketDialer(log, opts, u, false, pool)
 	case WebsocketTls:
-		dialer, e = newWebsocketDialer(log, opts, u, true)
+		dialer, e = newWebsocketDialer(log, opts, u, true, pool)
 	// case DialerHttp:
 	// case DialerHttpTls:
 	case Tcp:

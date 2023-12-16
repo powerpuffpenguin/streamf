@@ -10,8 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/pool"
+	"github.com/powerpuffpenguin/sf/third-party/websocket"
 )
 
 type websocketConn struct {
@@ -58,7 +59,10 @@ type WebsocketDialer struct {
 	dialer     *websocket.Dialer
 }
 
-func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *WebsocketDialer, e error) {
+func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
+	secure bool,
+	pool *pool.Pool,
+) (dialer *WebsocketDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
 	var duration time.Duration
 	if opts.Timeout == `` {
@@ -78,27 +82,36 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secur
 		`url`, opts.URL,
 		`timeout`, duration,
 	)
-	var host string
+	var (
+		network string
+		addr    string
+	)
+	if opts.Network == `` {
+		network = `tcp`
+	} else {
+		network = opts.Network
+	}
 	if opts.Addr == `` {
-		host = u.Host
+		addr = u.Host
+	} else {
+		addr = opts.Addr
 	}
 	var netDialer net.Dialer
 	dialer = &WebsocketDialer{
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
-			Network: u.Scheme,
-			Addr:    opts.Addr,
+			Network: network,
+			Addr:    addr,
 			Secure:  secure,
 			URL:     opts.URL,
 		},
 		dialer: &websocket.Dialer{
-			NetDialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				if host == `` {
-					return netDialer.DialContext(ctx, network, addr)
-				} else {
-					return netDialer.DialContext(ctx, network, host)
-				}
+			ReadBufferSize:  pool.Size(),
+			WriteBufferSize: pool.Size(),
+			WriteBufferPool: websocket.NewBufferPool(pool),
+			NetDialContext: func(ctx context.Context, _, __ string) (net.Conn, error) {
+				return netDialer.DialContext(ctx, network, addr)
 			},
 		},
 	}
