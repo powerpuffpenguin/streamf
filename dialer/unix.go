@@ -17,7 +17,6 @@ type UnixDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	duration   time.Duration
-	log        *slog.Logger
 	host       string
 	remoteAddr RemoteAddr
 	dialer     interface {
@@ -57,7 +56,7 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 			} else {
 				prefix = `X`
 			}
-			u, e = url.Parse(prefix + rawURL)
+			u, e = url.Parse(`x://` + prefix + rawURL)
 			if e != nil {
 				log.Warn(`parse unix url fail`,
 					`error`, e,
@@ -65,9 +64,9 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 				return
 			}
 			if prefix == `X` {
-				host = `@` + u.Host
+				host = `@` + u.Host[1:]
 			} else {
-				host = `@@` + u.Host
+				host = `@@` + u.Host[2:]
 			}
 		}
 	}
@@ -78,9 +77,9 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 	dialer = &UnixDialer{
 		done:     make(chan struct{}),
 		duration: duration,
-		log:      log,
 		host:     host,
 		remoteAddr: RemoteAddr{
+			Dialer:  opts.Tag,
 			Network: u.Scheme,
 			Addr:    opts.Addr,
 			Secure:  secure,
@@ -99,6 +98,9 @@ func newUnixDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 		dialer.dialer = new(net.Dialer)
 	}
 	return
+}
+func (t *UnixDialer) Tag() string {
+	return t.remoteAddr.Dialer
 }
 func (t *UnixDialer) Close() (e error) {
 	if t.clsoed == 0 && atomic.CompareAndSwapUint32(&t.clsoed, 0, 1) {

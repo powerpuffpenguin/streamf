@@ -16,7 +16,6 @@ type TcpDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	duration   time.Duration
-	log        *slog.Logger
 	host       string
 	remoteAddr RemoteAddr
 	dialer     interface {
@@ -51,9 +50,9 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 	dialer = &TcpDialer{
 		done:     make(chan struct{}),
 		duration: duration,
-		log:      log,
 		host:     host,
 		remoteAddr: RemoteAddr{
+			Dialer:  opts.Tag,
 			Network: u.Scheme,
 			Addr:    opts.Addr,
 			Secure:  secure,
@@ -72,6 +71,9 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 		dialer.dialer = new(net.Dialer)
 	}
 	return
+}
+func (t *TcpDialer) Tag() string {
+	return t.remoteAddr.Dialer
 }
 func (t *TcpDialer) Close() (e error) {
 	if t.clsoed == 0 && atomic.CompareAndSwapUint32(&t.clsoed, 0, 1) {

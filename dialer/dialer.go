@@ -22,6 +22,7 @@ const (
 )
 
 type Dialer interface {
+	Tag() string
 	Connect(ctx context.Context) (conn *Conn, e error)
 	Close() (e error)
 }
@@ -38,8 +39,10 @@ func New(log *slog.Logger, opts *config.Dialer) (dialer Dialer, e error) {
 		return
 	}
 	switch u.Scheme {
-	// case DialerWebsocket:
-	// case DialerWebsocketTls:
+	case Websocket:
+		dialer, e = newWebsocketDialer(log, opts, u, false)
+	case WebsocketTls:
+		dialer, e = newWebsocketDialer(log, opts, u, true)
 	// case DialerHttp:
 	// case DialerHttpTls:
 	case Tcp:
@@ -67,6 +70,7 @@ func (c *Conn) RemoteAddr() RemoteAddr {
 }
 
 type RemoteAddr struct {
+	Dialer  string
 	Network string
 	Addr    string
 	Secure  bool

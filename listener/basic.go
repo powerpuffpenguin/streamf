@@ -52,12 +52,12 @@ func NewBasicListener(log *slog.Logger, dialer dialer.Dialer, opts *config.Basic
 	tag := opts.Tag
 	if tag == `` {
 		if secure {
-			tag = `basic ` + addr.Network() + `tls://` + addr.String()
+			tag = `basic ` + addr.Network() + `+tls://` + addr.String()
 		} else {
 			tag = `basic ` + addr.Network() + `://` + addr.String()
 		}
 	}
-	log = log.With(`listener`, tag)
+	log = log.With(`listener`, tag, `dialer`, dialer.Tag())
 	var duration time.Duration
 	if opts.Close == `` {
 		duration = time.Second
@@ -123,10 +123,11 @@ func (l *BasicListener) serve(src net.Conn) {
 	src.RemoteAddr()
 	dst, e := l.dialer.Connect(context.Background())
 	if e != nil {
+		l.log.Warn(`connect fail`, `error`, e)
 		return
 	}
 	addr := dst.RemoteAddr()
-	l.log.Info("bridge",
+	l.log.Info(`bridge`,
 		`network`, addr.Network,
 		`addr`, addr.Addr,
 		`secure`, addr.Secure,
