@@ -18,8 +18,6 @@ const (
 	HttpTls      = `https`
 	Tcp          = `tcp`
 	TcpTls       = `tcp+tls`
-	Unix         = `unix`
-	UnixTls      = `unix+tls`
 )
 
 type Dialer interface {
@@ -50,10 +48,6 @@ func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer,
 		dialer, e = newTcpDialer(log, opts, u, false)
 	case TcpTls:
 		dialer, e = newTcpDialer(log, opts, u, true)
-	case Unix:
-		dialer, e = newUnixDialer(log, opts, u, false)
-	case UnixTls:
-		dialer, e = newUnixDialer(log, opts, u, true)
 	default:
 		e = errors.New(`url scheme not supported: ` + opts.URL)
 		log.Error(`url scheme not supported`, `url`, opts.URL)

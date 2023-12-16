@@ -78,24 +78,37 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 			)
 		}
 	}
+	var (
+		network = `tcp`
+		addr    = u.Host
+		query   url.Values
+	)
+	if opts.Network != `` {
+		network = opts.Network
+	} else {
+		query = u.Query()
+		s := query.Get(`network`)
+		if s != `` {
+			network = s
+		}
+	}
+	if opts.Addr != `` {
+		addr = opts.Addr
+	} else {
+		if query == nil {
+			query = u.Query()
+		}
+		s := query.Get(`addr`)
+		if s != `` {
+			addr = s
+		}
+	}
 	log.Info(`new dialer`,
+		`network`, network,
+		`addr`, addr,
 		`url`, opts.URL,
 		`timeout`, duration,
 	)
-	var (
-		network string
-		addr    string
-	)
-	if opts.Network == `` {
-		network = `tcp`
-	} else {
-		network = opts.Network
-	}
-	if opts.Addr == `` {
-		addr = u.Host
-	} else {
-		addr = opts.Addr
-	}
 	var netDialer net.Dialer
 	dialer = &WebsocketDialer{
 		done: make(chan struct{}),

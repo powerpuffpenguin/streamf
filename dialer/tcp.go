@@ -20,6 +20,7 @@ type TcpDialer struct {
 	dialer     interface {
 		DialContext(context.Context, string, string) (net.Conn, error)
 	}
+	config *tls.Config
 }
 
 func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *TcpDialer, e error) {
@@ -38,24 +39,37 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 			)
 		}
 	}
+	var (
+		network = `tcp`
+		addr    = u.Host
+		query   url.Values
+	)
+	if opts.Network != `` {
+		network = opts.Network
+	} else {
+		query = u.Query()
+		s := query.Get(`network`)
+		if s != `` {
+			network = s
+		}
+	}
+	if opts.Addr != `` {
+		addr = opts.Addr
+	} else {
+		if query == nil {
+			query = u.Query()
+		}
+		s := query.Get(`addr`)
+		if s != `` {
+			addr = s
+		}
+	}
 	log.Info(`new dialer`,
+		`network`, network,
+		`addr`, addr,
 		`url`, opts.URL,
 		`timeout`, duration,
 	)
-	var (
-		network string
-		addr    string
-	)
-	if opts.Network == `` {
-		network = `tcp`
-	} else {
-		network = opts.Network
-	}
-	if opts.Addr == `` {
-		addr = u.Host
-	} else {
-		addr = opts.Addr
-	}
 	dialer = &TcpDialer{
 		done:     make(chan struct{}),
 		duration: duration,
@@ -66,17 +80,13 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 			Secure:  secure,
 			URL:     opts.URL,
 		},
+		dialer: new(net.Dialer),
 	}
 	if secure {
-		dialer.dialer = &tls.Dialer{
-			NetDialer: new(net.Dialer),
-			Config: &tls.Config{
-				ServerName:         u.Hostname(),
-				InsecureSkipVerify: opts.AllowInsecure,
-			},
+		dialer.config = &tls.Config{
+			ServerName:         u.Hostname(),
+			InsecureSkipVerify: opts.AllowInsecure,
 		}
-	} else {
-		dialer.dialer = new(net.Dialer)
 	}
 	return
 }
@@ -100,6 +110,15 @@ func (t *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	ch := make(chan connectResult)
 	go func() {
 		conn, e := t.dialer.DialContext(ctx, t.remoteAddr.Network, t.remoteAddr.Addr)
+		if e == nil && t.config != nil {
+			tlsConn := tls.Client(conn, t.config.Clone())
+			e = tlsConn.HandshakeContext(ctx)
+			if e == nil {
+				conn = tlsConn
+			} else {
+				conn.Close()
+			}
+		}
 		if e == nil {
 			select {
 			case ch <- connectResult{

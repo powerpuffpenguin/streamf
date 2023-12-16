@@ -13,8 +13,6 @@ type Dialer struct {
 	//  * "https://host/path"
 	//  * "tcp://host:port"
 	//  * "tcp+tls://host:port"
-	//  * "unix://host"
-	//  * "unix+tls://host"
 	URL string `json:"url"`
 	// optional connect address
 	Addr string `json:"addr"`

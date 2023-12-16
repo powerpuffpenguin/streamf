@@ -17,7 +17,6 @@ func bridging(c0, c1 io.ReadWriteCloser, duration time.Duration) {
 	defer c1.Close()
 	w0, ok0 := c0.(websocketConn)
 	w1, ok1 := c1.(websocketConn)
-
 	done := make(chan bool, 1)
 	if ok0 {
 		if ok1 {
@@ -94,7 +93,7 @@ func writeWebsocket(w *websocket.Conn, r io.ReadCloser, done chan<- bool) {
 		n      int
 		er, ew error
 	)
-	for er != nil && ew == nil {
+	for er == nil && ew == nil {
 		n, er = r.Read(b)
 		if n > 0 {
 			ew = w.WriteMessage(websocket.BinaryMessage, b[:n])
@@ -111,7 +110,7 @@ func forwarding(w io.WriteCloser, r io.ReadCloser, done chan<- bool) {
 	// 	n      int
 	// 	er, ew error
 	// )
-	// for er != nil && ew == nil {
+	// for er == nil && ew == nil {
 	// 	n, er = r.Read(b)
 	// 	if n > 0 {
 	// 		_, ew = w.Write(b[:n])
