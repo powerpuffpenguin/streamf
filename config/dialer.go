@@ -20,7 +20,8 @@ type Dialer struct {
 	Network string `json:"network"`
 	// If true, do not verify whether the certificate is valid when connecting to the tls server
 	AllowInsecure bool `json:"allowInsecure"`
-
-	// http method, default "PUT"
+	// If dialing fails, how many times to retry
+	Retry int `json:"retry"`
+	// http method, default "POST"
 	Method string
 }

@@ -42,8 +42,10 @@ func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer,
 		dialer, e = newWebsocketDialer(log, opts, u, false, pool)
 	case WebsocketTls:
 		dialer, e = newWebsocketDialer(log, opts, u, true, pool)
-	// case DialerHttp:
-	// case DialerHttpTls:
+	case Http:
+		dialer, e = newHttpDialer(log, opts, u, false)
+	case HttpTls:
+		dialer, e = newHttpDialer(log, opts, u, true)
 	case Tcp:
 		dialer, e = newTcpDialer(log, opts, u, false)
 	case TcpTls:

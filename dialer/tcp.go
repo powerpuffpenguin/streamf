@@ -15,27 +15,25 @@ import (
 type TcpDialer struct {
 	done       chan struct{}
 	clsoed     uint32
-	duration   time.Duration
 	remoteAddr RemoteAddr
-	dialer     interface {
-		DialContext(context.Context, string, string) (net.Conn, error)
-	}
-	config *tls.Config
+	timeout    time.Duration
+	retry      int
+	rawDialer  *rawDialer
 }
 
 func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *TcpDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
-	var duration time.Duration
+	var timeout time.Duration
 	if opts.Timeout == `` {
-		duration = time.Millisecond * 500
+		timeout = time.Millisecond * 500
 	} else {
 		var err error
-		duration, err = time.ParseDuration(opts.Timeout)
+		timeout, err = time.ParseDuration(opts.Timeout)
 		if err != nil {
-			duration = time.Millisecond * 500
+			timeout = time.Millisecond * 500
 			log.Warn(`parse duration fail, used default close duration.`,
 				`error`, err,
-				`timeout`, duration,
+				`timeout`, timeout,
 			)
 		}
 	}
@@ -64,15 +62,26 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 			addr = s
 		}
 	}
+	var cfg *tls.Config
+	if secure {
+		cfg = &tls.Config{
+			ServerName:         u.Hostname(),
+			InsecureSkipVerify: opts.AllowInsecure,
+		}
+	}
+	rawDialer, e := newRawDialer(network, addr, cfg)
+	if e != nil {
+		log.Error(`new dialer fail`, `error`, e)
+		return
+	}
 	log.Info(`new dialer`,
 		`network`, network,
 		`addr`, addr,
 		`url`, opts.URL,
-		`timeout`, duration,
+		`timeout`, timeout,
 	)
 	dialer = &TcpDialer{
-		done:     make(chan struct{}),
-		duration: duration,
+		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
 			Network: network,
@@ -80,54 +89,41 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 			Secure:  secure,
 			URL:     opts.URL,
 		},
-		dialer: new(net.Dialer),
-	}
-	if secure {
-		dialer.config = &tls.Config{
-			ServerName:         u.Hostname(),
-			InsecureSkipVerify: opts.AllowInsecure,
-		}
+		timeout:   timeout,
+		retry:     opts.Retry,
+		rawDialer: rawDialer,
 	}
 	return
 }
-func (t *TcpDialer) Tag() string {
-	return t.remoteAddr.Dialer
+func (d *TcpDialer) Tag() string {
+	return d.remoteAddr.Dialer
 }
-func (t *TcpDialer) Close() (e error) {
-	if t.clsoed == 0 && atomic.CompareAndSwapUint32(&t.clsoed, 0, 1) {
-		close(t.done)
+func (d *TcpDialer) Close() (e error) {
+	if d.clsoed == 0 && atomic.CompareAndSwapUint32(&d.clsoed, 0, 1) {
+		close(d.done)
 	} else {
 		e = ErrClosed
 	}
 	return
 }
-func (t *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
-	if t.duration > 0 {
+func (d *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
+	if d.timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, t.duration)
+		ctx, cancel = context.WithTimeout(ctx, d.timeout)
 		defer cancel()
 	}
 	ch := make(chan connectResult)
 	go func() {
-		conn, e := t.dialer.DialContext(ctx, t.remoteAddr.Network, t.remoteAddr.Addr)
-		if e == nil && t.config != nil {
-			tlsConn := tls.Client(conn, t.config.Clone())
-			e = tlsConn.HandshakeContext(ctx)
-			if e == nil {
-				conn = tlsConn
-			} else {
-				conn.Close()
-			}
-		}
+		conn, e := d.connect(ctx)
 		if e == nil {
 			select {
 			case ch <- connectResult{
 				Conn: &Conn{
 					ReadWriteCloser: conn,
-					remoteAddr:      t.remoteAddr,
+					remoteAddr:      d.remoteAddr,
 				},
 			}:
-			case <-t.done:
+			case <-d.done:
 				conn.Close()
 			case <-ctx.Done():
 				conn.Close()
@@ -137,18 +133,34 @@ func (t *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 			case ch <- connectResult{
 				Error: e,
 			}:
-			case <-t.done:
+			case <-d.done:
 			case <-ctx.Done():
 			}
 		}
 	}()
 	select {
-	case <-t.done:
+	case <-d.done:
 		e = ErrClosed
 	case <-ctx.Done():
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
+	}
+	return
+}
+func (d *TcpDialer) connect(ctx context.Context) (conn net.Conn, e error) {
+	for i := 0; ; i++ {
+		conn, e = d.rawDialer.DialContext(ctx)
+		if e == nil || i >= d.retry {
+			break
+		}
+		select {
+		case <-d.done:
+			return
+		case <-ctx.Done():
+			return
+		default:
+		}
 	}
 	return
 }

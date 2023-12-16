@@ -56,6 +56,8 @@ type WebsocketDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	remoteAddr RemoteAddr
+	timeout    time.Duration
+	retry      int
 	dialer     *websocket.Dialer
 }
 
@@ -64,52 +66,41 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 	pool *pool.Pool,
 ) (dialer *WebsocketDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
-	var duration time.Duration
+	var timeout time.Duration
 	if opts.Timeout == `` {
-		duration = time.Millisecond * 500
+		timeout = time.Millisecond * 500
 	} else {
 		var err error
-		duration, err = time.ParseDuration(opts.Timeout)
+		timeout, err = time.ParseDuration(opts.Timeout)
 		if err != nil {
-			duration = time.Millisecond * 500
+			timeout = time.Millisecond * 500
 			log.Warn(`parse duration fail, used default close duration.`,
 				`error`, err,
-				`timeout`, duration,
+				`timeout`, timeout,
 			)
 		}
 	}
 	var (
 		network = `tcp`
 		addr    = u.Host
-		query   url.Values
 	)
 	if opts.Network != `` {
 		network = opts.Network
-	} else {
-		query = u.Query()
-		s := query.Get(`network`)
-		if s != `` {
-			network = s
-		}
 	}
 	if opts.Addr != `` {
 		addr = opts.Addr
-	} else {
-		if query == nil {
-			query = u.Query()
-		}
-		s := query.Get(`addr`)
-		if s != `` {
-			addr = s
-		}
+	}
+	rawDialer, e := newRawDialer(network, addr, nil)
+	if e != nil {
+		log.Error(`new dialer fail`, `error`, e)
+		return
 	}
 	log.Info(`new dialer`,
 		`network`, network,
 		`addr`, addr,
 		`url`, opts.URL,
-		`timeout`, duration,
+		`timeout`, timeout,
 	)
-	var netDialer net.Dialer
 	dialer = &WebsocketDialer{
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
@@ -119,17 +110,16 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 			Secure:  secure,
 			URL:     opts.URL,
 		},
+		timeout: timeout,
+		retry:   opts.Retry,
 		dialer: &websocket.Dialer{
 			ReadBufferSize:  pool.Size(),
 			WriteBufferSize: pool.Size(),
 			WriteBufferPool: websocket.NewBufferPool(pool),
 			NetDialContext: func(ctx context.Context, _, __ string) (net.Conn, error) {
-				return netDialer.DialContext(ctx, network, addr)
+				return rawDialer.DialContext(ctx)
 			},
 		},
-	}
-	if duration > 0 {
-		dialer.dialer.HandshakeTimeout = duration
 	}
 	if secure {
 		dialer.dialer.TLSClientConfig = &tls.Config{
@@ -152,19 +142,24 @@ func (t *WebsocketDialer) Close() (e error) {
 	return
 }
 
-func (t *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
+func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
+	if d.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, d.timeout)
+		defer cancel()
+	}
 	ch := make(chan connectResult)
 	go func() {
-		conn, _, e := t.dialer.DialContext(ctx, t.remoteAddr.URL, nil)
+		conn, e := d.connect(ctx)
 		if e == nil {
 			select {
 			case ch <- connectResult{
 				Conn: &Conn{
 					ReadWriteCloser: &websocketConn{ws: conn},
-					remoteAddr:      t.remoteAddr,
+					remoteAddr:      d.remoteAddr,
 				},
 			}:
-			case <-t.done:
+			case <-d.done:
 				conn.Close()
 			case <-ctx.Done():
 				conn.Close()
@@ -174,18 +169,34 @@ func (t *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 			case ch <- connectResult{
 				Error: e,
 			}:
-			case <-t.done:
+			case <-d.done:
 			case <-ctx.Done():
 			}
 		}
 	}()
 	select {
-	case <-t.done:
+	case <-d.done:
 		e = ErrClosed
 	case <-ctx.Done():
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
+	}
+	return
+}
+func (d *WebsocketDialer) connect(ctx context.Context) (conn *websocket.Conn, e error) {
+	for i := 0; ; i++ {
+		conn, _, e = d.dialer.DialContext(ctx, d.remoteAddr.URL, nil)
+		if e == nil || i >= d.retry {
+			break
+		}
+		select {
+		case <-d.done:
+			return
+		case <-ctx.Done():
+			return
+		default:
+		}
 	}
 	return
 }
