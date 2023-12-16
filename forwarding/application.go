@@ -47,7 +47,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		dialers[opts.Tag] = d
 	}
 	for _, opts := range conf.Listener {
-		l, e = listener.New(log, dialers, opts)
+		l, e = listener.New(log, pool, dialers, opts)
 		if e != nil {
 			for _, d = range dialers {
 				d.Close()

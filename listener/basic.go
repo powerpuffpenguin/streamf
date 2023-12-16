@@ -10,17 +10,19 @@ import (
 
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/dialer"
+	"github.com/powerpuffpenguin/sf/pool"
 )
 
 type BasicListener struct {
 	listener net.Listener
 	dialer   dialer.Dialer
+	pool     *pool.Pool
 	log      *slog.Logger
 	closed   uint32
 	duration time.Duration
 }
 
-func NewBasicListener(log *slog.Logger, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
+func NewBasicListener(log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
@@ -76,6 +78,7 @@ func NewBasicListener(log *slog.Logger, dialer dialer.Dialer, opts *config.Basic
 	listener = &BasicListener{
 		listener: l,
 		dialer:   dialer,
+		pool:     pool,
 		log:      log,
 		duration: duration,
 	}
@@ -133,5 +136,5 @@ func (l *BasicListener) serve(src net.Conn) {
 		`secure`, addr.Secure,
 		`url`, addr.URL,
 	)
-	bridging(src, dst.ReadWriteCloser, l.duration)
+	bridging(src, dst.ReadWriteCloser, l.pool, l.duration)
 }

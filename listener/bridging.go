@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/powerpuffpenguin/sf/pool"
 	"github.com/powerpuffpenguin/sf/third-party/websocket"
 )
 
@@ -12,7 +13,7 @@ type websocketConn interface {
 	Websocket() *websocket.Conn
 }
 
-func bridging(c0, c1 io.ReadWriteCloser, duration time.Duration) {
+func bridging(c0, c1 io.ReadWriteCloser, pool *pool.Pool, duration time.Duration) {
 	defer c0.Close()
 	defer c1.Close()
 	w0, ok0 := c0.(websocketConn)
@@ -25,15 +26,15 @@ func bridging(c0, c1 io.ReadWriteCloser, duration time.Duration) {
 			go forwardingWebsocket(ws0, ws1, done)
 			go forwardingWebsocket(ws1, ws0, done)
 		} else {
-			go readWebsocket(c1, w0.Websocket(), done)
-			go writeWebsocket(w0.Websocket(), c1, done)
+			go readWebsocket(c1, w0.Websocket(), done, pool)
+			go writeWebsocket(w0.Websocket(), c1, done, pool)
 		}
 	} else if ok1 {
-		go readWebsocket(c0, w1.Websocket(), done)
-		go writeWebsocket(w1.Websocket(), c0, done)
+		go readWebsocket(c0, w1.Websocket(), done, pool)
+		go writeWebsocket(w1.Websocket(), c0, done, pool)
 	} else {
-		go forwarding(c0, c1, done)
-		go forwarding(c1, c0, done)
+		go forwarding(c0, c1, done, pool)
+		go forwarding(c1, c0, done, pool)
 	}
 	<-done
 	if duration > 0 {
@@ -69,27 +70,42 @@ func forwardingWebsocket(w, r *websocket.Conn, done chan<- bool) {
 	}
 }
 
-func readWebsocket(w io.WriteCloser, r *websocket.Conn, done chan<- bool) {
+func readWebsocket(w io.WriteCloser, r *websocket.Conn, done chan<- bool, pool *pool.Pool) {
 	defer forwardingDone(done)
 	var (
 		e   error
 		src io.Reader
 	)
-	for {
-		_, src, e = r.NextReader()
-		if e != nil {
-			break
+	if rt, ok := w.(io.ReaderFrom); ok {
+		for {
+			_, src, e = r.NextReader()
+			if e != nil {
+				break
+			}
+			_, e = rt.ReadFrom(src)
+			if e != nil {
+				break
+			}
 		}
-		_, e = io.Copy(w, src)
-		if e != nil {
-			break
+	} else {
+		buf := pool.Get()
+		for {
+			_, src, e = r.NextReader()
+			if e != nil {
+				break
+			}
+			_, e = copyBuffer(w, src, buf)
+			if e != nil {
+				break
+			}
 		}
+		pool.Put(buf)
 	}
 }
-func writeWebsocket(w *websocket.Conn, r io.ReadCloser, done chan<- bool) {
+func writeWebsocket(w *websocket.Conn, r io.ReadCloser, done chan<- bool, pool *pool.Pool) {
 	defer forwardingDone(done)
 	var (
-		b      = make([]byte, 32*1024)
+		b      = pool.Get()
 		n      int
 		er, ew error
 	)
@@ -99,11 +115,12 @@ func writeWebsocket(w *websocket.Conn, r io.ReadCloser, done chan<- bool) {
 			ew = w.WriteMessage(websocket.BinaryMessage, b[:n])
 		}
 	}
+	pool.Put(b)
 }
 func forwardingDone(done chan<- bool) {
 	done <- true
 }
-func forwarding(w io.WriteCloser, r io.ReadCloser, done chan<- bool) {
+func forwarding(w io.WriteCloser, r io.ReadCloser, done chan<- bool, pool *pool.Pool) {
 	defer forwardingDone(done)
 	// var (
 	// 	b      = make([]byte, 32*1024)
@@ -121,8 +138,9 @@ func forwarding(w io.WriteCloser, r io.ReadCloser, done chan<- bool) {
 	} else if wt, ok := r.(io.WriterTo); ok {
 		wt.WriteTo(w)
 	} else {
-		var b = make([]byte, 32*1024)
+		var b = pool.Get()
 		copyBuffer(w, r, b)
+		pool.Put(b)
 	}
 }
 
