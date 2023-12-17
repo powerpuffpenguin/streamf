@@ -1,5 +1,5 @@
-Target="cf"
-Docker="king011/cf"
+Target="streamf"
+Docker="king011/streamf"
 Dir=$(cd "$(dirname $BASH_SOURCE)/.." && pwd)
 Version="v0.0.1"
 View=1

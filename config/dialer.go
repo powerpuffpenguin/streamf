@@ -23,5 +23,5 @@ type Dialer struct {
 	// If dialing fails, how many times to retry
 	Retry int `json:"retry"`
 	// http method, default "POST"
-	Method string
+	Method string `json:"method"`
 }

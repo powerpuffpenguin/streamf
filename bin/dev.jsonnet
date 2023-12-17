@@ -76,18 +76,18 @@
       dialer: 'unix+tls',
     },
     {
+      mode: 'http',
       network: 'tcp',
       address: ':4000',
       close: '1s',
-      dialer: 'ws',
     },
     {
+      mode: 'http',
       network: 'tcp',
       address: ':4443',
       certFile: 'test.crt',
       keyFile: 'test.key',
       close: '1s',
-      dialer: 'wss',
     },
   ],
 }

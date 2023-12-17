@@ -85,7 +85,7 @@ func NewBasicListener(log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, o
 	return
 }
 func (l *BasicListener) Close() (e error) {
-	if l.closed != 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
+	if l.closed == 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
 		e = l.listener.Close()
 	} else {
 		e = ErrClosed
@@ -122,10 +122,9 @@ func (l *BasicListener) Serve() error {
 	}
 }
 func (l *BasicListener) serve(src net.Conn) {
-	defer src.Close()
-	src.RemoteAddr()
 	dst, e := l.dialer.Connect(context.Background())
 	if e != nil {
+		src.Close()
 		l.log.Warn(`connect fail`, `error`, e)
 		return
 	}

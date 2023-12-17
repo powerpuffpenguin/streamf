@@ -22,4 +22,18 @@ type Listener struct {
 	Mode string `json:"mode"`
 	// Specify forwarding destination in "basic" mode
 	Dialer string `json:"dialer"`
+	// Specify route for http mode
+	Router []*Router `json:"router"`
+}
+type Router struct {
+	// POST PUT PATCH WS
+	Method string `json:"method"`
+	// url match pattern
+	Pattern string `json:"pattern"`
+	// Specify forwarding destination
+	Dialer string `json:"dialer"`
+	// Access token, If non-empty, this value will be verified from the header and url parameters.
+	//  * 'ws://example.com/anypath?access_token=access_token=Bearer%20' + rawURLBase64(XXXXX)
+	//  * curl -H "Authorization: Bearer " + rawURLBase64(XXXXX)
+	Access string `json:"access"`
 }

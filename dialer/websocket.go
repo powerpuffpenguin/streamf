@@ -3,7 +3,6 @@ package dialer
 import (
 	"context"
 	"crypto/tls"
-	"io"
 	"log/slog"
 	"net"
 	"net/url"
@@ -11,46 +10,10 @@ import (
 	"time"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/internal/httpmux"
 	"github.com/powerpuffpenguin/sf/pool"
 	"github.com/powerpuffpenguin/sf/third-party/websocket"
 )
-
-type websocketConn struct {
-	ws *websocket.Conn
-	r  io.Reader
-}
-
-func (w *websocketConn) Websocket() *websocket.Conn {
-	return w.ws
-}
-func (w *websocketConn) Close() error {
-	return w.ws.Close()
-}
-func (w *websocketConn) Write(b []byte) (n int, e error) {
-	// panic(`not implemented websocketConn.Write`)
-	e = w.ws.WriteMessage(websocket.BinaryMessage, b)
-	if e != nil {
-		n = len(b)
-	}
-	return
-}
-func (w *websocketConn) Read(b []byte) (n int, e error) {
-	// panic(`not implemented websocketConn.Read`)
-	r := w.r
-	if r == nil {
-		_, r, e = w.ws.NextReader()
-		if e != nil {
-			return
-		}
-		w.r = r
-	}
-	n, e = w.r.Read(b)
-	if e == io.EOF {
-		e = nil
-		w.r = nil
-	}
-	return
-}
 
 type WebsocketDialer struct {
 	done       chan struct{}
@@ -155,7 +118,7 @@ func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 			select {
 			case ch <- connectResult{
 				Conn: &Conn{
-					ReadWriteCloser: &websocketConn{ws: conn},
+					ReadWriteCloser: httpmux.NewWebsocketConn(conn),
 					remoteAddr:      d.remoteAddr,
 				},
 			}:

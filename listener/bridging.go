@@ -37,8 +37,26 @@ func bridging(c0, c1 io.ReadWriteCloser, pool *pool.Pool, duration time.Duration
 		go forwarding(c1, c0, done, pool)
 	}
 	<-done
-	if duration > 0 {
+	if duration <= time.Millisecond {
+		return
+	}
+	select {
+	case <-done:
+		return
+	default:
+	}
+
+	if duration < time.Second*10 {
 		time.Sleep(duration)
+		return
+	}
+	timer := time.NewTimer(duration)
+	select {
+	case <-timer.C:
+	case <-done:
+		if !timer.Stop() {
+			<-timer.C
+		}
 	}
 }
 func forwardingWebsocket(w, r *websocket.Conn, done chan<- bool) {

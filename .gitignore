@@ -26,8 +26,8 @@
 /static/3rdpartylicenses.txt
 
 /.tmp/
-/cf
-/cfd
-/bin/cf
-/bin/cfd
+/streamf
+/streamfd
+/bin/streamf
+/bin/streamfd
 

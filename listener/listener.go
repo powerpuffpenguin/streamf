@@ -26,10 +26,10 @@ func New(log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, op
 			l, e = NewBasicListener(log, pool, found, &opts.BasicListener)
 		} else {
 			e = errors.New(`dialer not found: ` + opts.Dialer)
-			log.Error(`dialer not found`, `dialer`, opts.Mode)
+			log.Error(`dialer not found`, `dialer`, opts.Dialer)
 		}
 	case Http:
-		l, e = NewHttpListener(log, pool, dialers, &opts.BasicListener)
+		l, e = NewHttpListener(log, pool, dialers, &opts.BasicListener, opts.Router)
 	default:
 		e = errors.New(`listener mode not supported: ` + opts.Mode)
 		log.Error(`listener mode not supported`, `mode`, opts.Mode)

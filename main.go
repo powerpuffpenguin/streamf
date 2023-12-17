@@ -38,7 +38,6 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 	var c config.Config
 	e := c.Load(conf)
