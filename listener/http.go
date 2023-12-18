@@ -83,7 +83,7 @@ func NewHttpListener(log *slog.Logger, pool *pool.Pool, dialers map[string]diale
 	)
 	for _, router := range routers {
 		switch strings.ToUpper(router.Method) {
-		case http.MethodPost:
+		case ``, http.MethodPost:
 			handler, e = listener.createHttp2(dialers, router)
 			if e != nil {
 				l.Close()
@@ -166,6 +166,18 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
 	}
+	if router.Access == `` {
+		log.Info(`new router`,
+			`method`, router.Method,
+			`pattern`, router.Pattern,
+		)
+	} else {
+		log.Info(`new router`,
+			`method`, router.Method,
+			`pattern`, router.Pattern,
+			`access`, router.Access,
+		)
+	}
 	handler = func(w http.ResponseWriter, r *http.Request) {
 		if accessToken != `` && !l.access(r, accessToken) {
 			log.Warn(`access not matched`)
@@ -185,7 +197,7 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 			return
 		}
 		addr := dst.RemoteAddr()
-		l.log.Info(`bridge`,
+		log.Info(`bridge`,
 			`network`, addr.Network,
 			`addr`, addr.Addr,
 			`secure`, addr.Secure,
@@ -208,6 +220,18 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 	var accessToken string
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
+	}
+	if router.Access == `` {
+		log.Info(`new router`,
+			`method`, `WebSocket`,
+			`pattern`, router.Pattern,
+		)
+	} else {
+		log.Info(`new router`,
+			`method`, `WebSocket`,
+			`pattern`, router.Pattern,
+			`access`, router.Access,
+		)
 	}
 	upgrader := l.getUpgrader()
 	handler = func(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +258,7 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 			return
 		}
 		addr := dst.RemoteAddr()
-		l.log.Info(`bridge`,
+		log.Info(`bridge`,
 			`network`, addr.Network,
 			`addr`, addr.Addr,
 			`secure`, addr.Secure,

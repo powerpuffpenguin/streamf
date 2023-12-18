@@ -11,8 +11,8 @@ type Dialer struct {
 	//  * "wss://host/path"
 	//  * "http://host/path"
 	//  * "https://host/path"
-	//  * "tcp://host:port"
-	//  * "tcp+tls://host:port"
+	//  * "basic://host:port"
+	//  * "basic+tls://host:port"
 	URL string `json:"url"`
 	// optional connect address
 	Addr string `json:"addr"`
@@ -24,4 +24,6 @@ type Dialer struct {
 	Retry int `json:"retry"`
 	// http method, default "POST"
 	Method string `json:"method"`
+	// Optional credentials, only valid for http protocol
+	Access string `jsong:"access"`
 }

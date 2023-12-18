@@ -3,6 +3,7 @@ package dialer
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"io"
 	"log/slog"
@@ -25,6 +26,7 @@ type HttpDialer struct {
 	retry      int
 	client     *http.Client
 	method     string
+	header     http.Header
 }
 
 func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *HttpDialer, e error) {
@@ -45,6 +47,8 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 	}
 	method := strings.ToUpper(opts.Method)
 	switch method {
+	case ``:
+		method = http.MethodPost
 	case http.MethodPost, http.MethodPut, http.MethodPatch:
 	default:
 		e = errHttpMethod
@@ -71,6 +75,7 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 	)
 	if secure {
 		cfg = &tls.Config{
+			NextProtos:         []string{`h2`},
 			ServerName:         u.Hostname(),
 			InsecureSkipVerify: opts.AllowInsecure,
 		}
@@ -88,6 +93,13 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 		`timeout`, timeout,
 		`method`, method,
 	)
+	var header http.Header
+	if opts.Access != `` {
+		access := `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(opts.Access))
+		header = http.Header{
+			`Authorization`: []string{access},
+		}
+	}
 	dialer = &HttpDialer{
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
@@ -102,12 +114,14 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 		client: &http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: !secure,
-				DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-					return rawDialer.DialContext(ctx)
+				DialTLSContext: func(ctx context.Context, _, _ string, cfg *tls.Config) (net.Conn, error) {
+					c, e := rawDialer.DialContext(ctx)
+					return c, e
 				},
 			},
 		},
 		method: method,
+		header: header,
 	}
 	return
 }
@@ -189,6 +203,7 @@ func (d *HttpDialer) connectHttp(ctx context.Context) (conn *httpConn, e error) 
 		w.Close()
 		return
 	}
+	req.Header = d.header
 	resp, e := d.client.Do(req)
 	if e != nil {
 		w.Close()

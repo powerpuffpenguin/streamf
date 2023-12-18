@@ -48,10 +48,11 @@ type rwfReaderFrom struct {
 }
 
 func (rw *rwfReaderFrom) Write(b []byte) (int, error) {
-	return rw.w.Write(b)
-}
-func (rw *rwfReaderFrom) Flush() {
-	rw.f.Flush()
+	n, e := rw.w.Write(b)
+	if n > 0 {
+		rw.f.Flush()
+	}
+	return n, e
 }
 func (rw *rwfReaderFrom) ReadFrom(r io.Reader) (int64, error) {
 	return rw.rt.ReadFrom(r)
@@ -68,11 +69,13 @@ type rwf struct {
 }
 
 func (rw *rwf) Write(b []byte) (int, error) {
-	return rw.w.Write(b)
+	n, e := rw.w.Write(b)
+	if n > 0 {
+		rw.f.Flush()
+	}
+	return n, e
 }
-func (rw *rwf) Flush() {
-	rw.f.Flush()
-}
+
 func (rw *rwf) Close() error {
 	return rw.c.Close()
 }

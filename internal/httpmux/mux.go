@@ -37,10 +37,6 @@ func (mux *ServeMux) Get(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodGet,
-		`pattern`, pattern,
-	)
 }
 func (mux *ServeMux) Head(pattern string, handler http.HandlerFunc) {
 	found, ok := mux.keys[pattern]
@@ -58,10 +54,6 @@ func (mux *ServeMux) Head(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodHead,
-		`pattern`, pattern,
-	)
 }
 func (mux *ServeMux) Post(pattern string, handler http.HandlerFunc) {
 	found, ok := mux.keys[pattern]
@@ -79,10 +71,6 @@ func (mux *ServeMux) Post(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodPost,
-		`pattern`, pattern,
-	)
 }
 func (mux *ServeMux) Put(pattern string, handler http.HandlerFunc) {
 	found, ok := mux.keys[pattern]
@@ -100,10 +88,6 @@ func (mux *ServeMux) Put(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodPut,
-		`pattern`, pattern,
-	)
 }
 func (mux *ServeMux) Patch(pattern string, handler http.HandlerFunc) {
 	found, ok := mux.keys[pattern]
@@ -121,10 +105,6 @@ func (mux *ServeMux) Patch(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodPatch,
-		`pattern`, pattern,
-	)
 }
 func (mux *ServeMux) Delete(pattern string, handler http.HandlerFunc) {
 	found, ok := mux.keys[pattern]
@@ -142,8 +122,4 @@ func (mux *ServeMux) Delete(pattern string, handler http.HandlerFunc) {
 		mux.keys[pattern] = found
 		mux.mux.Handle(pattern, found)
 	}
-	mux.log.Debug(`new router`,
-		`method`, http.MethodDelete,
-		`pattern`, pattern,
-	)
 }

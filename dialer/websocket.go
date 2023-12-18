@@ -3,8 +3,10 @@ package dialer
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/url"
 	"sync/atomic"
 	"time"
@@ -22,6 +24,7 @@ type WebsocketDialer struct {
 	timeout    time.Duration
 	retry      int
 	dialer     *websocket.Dialer
+	header     http.Header
 }
 
 func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
@@ -64,6 +67,14 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 		`url`, opts.URL,
 		`timeout`, timeout,
 	)
+
+	var header http.Header
+	if opts.Access != `` {
+		access := `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(opts.Access))
+		header = http.Header{
+			`Authorization`: []string{access},
+		}
+	}
 	dialer = &WebsocketDialer{
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
@@ -83,6 +94,7 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 				return rawDialer.DialContext(ctx)
 			},
 		},
+		header: header,
 	}
 	if secure {
 		dialer.dialer.TLSClientConfig = &tls.Config{
@@ -149,7 +161,7 @@ func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 }
 func (d *WebsocketDialer) connect(ctx context.Context) (conn *websocket.Conn, e error) {
 	for i := 0; ; i++ {
-		conn, _, e = d.dialer.DialContext(ctx, d.remoteAddr.URL, nil)
+		conn, _, e = d.dialer.DialContext(ctx, d.remoteAddr.URL, d.header)
 		if e == nil || i >= d.retry {
 			break
 		}

@@ -44,7 +44,9 @@ func (d *rawDialer) DialContext(ctx context.Context) (conn net.Conn, e error) {
 
 	tlsConn := tls.Client(conn, d.cfg.Clone())
 	e = tlsConn.HandshakeContext(ctx)
-	if e != nil {
+	if e == nil {
+		conn = tlsConn
+	} else {
 		conn.Close()
 		conn = nil
 	}

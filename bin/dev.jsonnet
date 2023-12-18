@@ -1,3 +1,27 @@
+local router = [
+  {
+    method: 'ws',
+    pattern: '/http/ws',
+    dialer: 'ws',
+    access: 'test access token',
+  },
+  {
+    method: 'POST',
+    pattern: '/http2',
+    dialer: 'h2c-ws',
+  },
+  {
+    method: 'PUT',
+    pattern: '/http2',
+    dialer: 'h2-ws',
+  },
+  {
+    method: 'PATCH',
+    pattern: '/http2',
+    dialer: 'h2c-ws',
+    access: 'test access token',
+  },
+];
 {
   logger: {
     level: 'debug',
@@ -11,23 +35,23 @@
     {
       tag: 'tcp',
       timeout: '200ms',
-      url: 'tcp://example.com?addr=localhost:2000',
+      url: 'basic://example.com?addr=localhost:2000',
     },
     {
       tag: 'tcp+tls',
       timeout: '200ms',
-      url: 'tcp+tls://example.com?addr=localhost:2443',
+      url: 'basic+tls://example.com?addr=localhost:2443',
       allowInsecure: true,
     },
     {
       tag: 'unix',
       timeout: '200ms',
-      url: 'tcp://?network=unix&addr=@tcp-http.socket',
+      url: 'basic://?network=unix&addr=@tcp-http.socket',
     },
     {
       tag: 'unix+tls',
       timeout: '200ms',
-      url: 'tcp+tls://?network=unix&addr=@tcp-https.socket',
+      url: 'basic+tls://?network=unix&addr=@tcp-https.socket',
       allowInsecure: true,
     },
     {
@@ -43,6 +67,23 @@
       url: 'wss://example.com/test/wss',
       network: 'unix',
       addr: '@tcp-https.socket',
+      allowInsecure: true,
+    },
+    {
+      tag: 'h2c-ws',
+      timeout: '200ms',
+      url: 'ws://example.com/test/ws',
+      network: 'unix',
+      addr: '@tcp-http.socket',
+    },
+    {
+      tag: 'h2-ws',
+      timeout: '200ms',
+      // url: 'http://127.0.0.1:4000/http2',
+      // method: 'POST',
+      url: 'https://127.0.0.1:4443/http2',
+      method: 'PATCH',
+      access: 'test access token',
       allowInsecure: true,
     },
   ],
@@ -80,6 +121,7 @@
       network: 'tcp',
       address: ':4000',
       close: '1s',
+      router: router,
     },
     {
       mode: 'http',
@@ -88,6 +130,7 @@
       certFile: 'test.crt',
       keyFile: 'test.key',
       close: '1s',
+      router: router,
     },
   ],
 }

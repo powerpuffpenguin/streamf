@@ -16,8 +16,8 @@ const (
 	WebsocketTls = `wss`
 	Http         = `http`
 	HttpTls      = `https`
-	Tcp          = `tcp`
-	TcpTls       = `tcp+tls`
+	Basic        = `basic`
+	BasicTls     = `basic+tls`
 )
 
 type Dialer interface {
@@ -46,9 +46,9 @@ func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer,
 		dialer, e = newHttpDialer(log, opts, u, false)
 	case HttpTls:
 		dialer, e = newHttpDialer(log, opts, u, true)
-	case Tcp:
+	case Basic:
 		dialer, e = newTcpDialer(log, opts, u, false)
-	case TcpTls:
+	case BasicTls:
 		dialer, e = newTcpDialer(log, opts, u, true)
 	default:
 		e = errors.New(`url scheme not supported: ` + opts.URL)
