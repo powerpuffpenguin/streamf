@@ -55,7 +55,7 @@ case "$1" in
     run)
         shift
         cd "$BashDir/bin"
-        ./streamf -conf dev.jsonnet
+        ./streamf -conf streamf.jsonnet
         exit $?
     ;;
     docker)
