@@ -10,6 +10,7 @@ import (
 
 type Dialer interface {
 	DialContext(ctx context.Context) (conn net.Conn, e error)
+	Close() error
 }
 type rawDialer struct {
 	netDialer *net.Dialer
@@ -33,6 +34,9 @@ func (d *rawDialer) DialContext(ctx context.Context) (conn net.Conn, e error) {
 		conn = nil
 	}
 	return
+}
+func (d *rawDialer) Close() error {
+	return nil
 }
 
 type pipeDialer struct {
@@ -64,4 +68,7 @@ func (d *pipeDialer) DialContext(ctx context.Context) (conn net.Conn, e error) {
 		conn = nil
 	}
 	return
+}
+func (d *pipeDialer) Close() error {
+	return nil
 }

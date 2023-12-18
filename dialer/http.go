@@ -29,6 +29,7 @@ type HttpDialer struct {
 	client     *http.Client
 	method     string
 	header     http.Header
+	rawDialer  network.Dialer
 }
 
 func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *HttpDialer, e error) {
@@ -121,8 +122,9 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 				},
 			},
 		},
-		method: method,
-		header: header,
+		method:    method,
+		header:    header,
+		rawDialer: rawDialer,
 	}
 	return
 }
@@ -133,6 +135,7 @@ func (d *HttpDialer) Tag() string {
 func (d *HttpDialer) Close() (e error) {
 	if d.clsoed == 0 && atomic.CompareAndSwapUint32(&d.clsoed, 0, 1) {
 		close(d.done)
+		e = d.rawDialer.Close()
 	} else {
 		e = ErrClosed
 	}

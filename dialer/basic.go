@@ -102,6 +102,7 @@ func (d *BasicDialer) Tag() string {
 func (d *BasicDialer) Close() (e error) {
 	if d.clsoed == 0 && atomic.CompareAndSwapUint32(&d.clsoed, 0, 1) {
 		close(d.done)
+		e = d.rawDialer.Close()
 	} else {
 		e = ErrClosed
 	}

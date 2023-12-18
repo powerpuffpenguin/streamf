@@ -26,6 +26,7 @@ type WebsocketDialer struct {
 	retry      int
 	dialer     *websocket.Dialer
 	header     http.Header
+	rawDialer  network.Dialer
 }
 
 func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL,
@@ -95,7 +96,8 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 				return rawDialer.DialContext(ctx)
 			},
 		},
-		header: header,
+		header:    header,
+		rawDialer: rawDialer,
 	}
 	if secure {
 		dialer.dialer.TLSClientConfig = &tls.Config{
@@ -112,6 +114,7 @@ func (t *WebsocketDialer) Tag() string {
 func (t *WebsocketDialer) Close() (e error) {
 	if t.clsoed == 0 && atomic.CompareAndSwapUint32(&t.clsoed, 0, 1) {
 		close(t.done)
+		e = t.rawDialer.Close()
 	} else {
 		e = ErrClosed
 	}
