@@ -26,13 +26,20 @@ func (n *Network) listenPipe(address string) (l net.Listener, e error) {
 		e = errors.New(`listen pipe ` + address + `: bind: address already in use`)
 		return
 	}
-	pipe := vnet.ListenPipe()
-	for ele := n.pipeList.Front(); ele != nil; ele = ele.Next() {
+	var (
+		pipe = vnet.ListenPipe()
+		ele  = n.pipeList.Front()
+		next *list.Element
+	)
+	for ele != nil {
+		next = ele.Next()
 		d := ele.Value.(*pipeDialer)
 		if d.addr == address {
 			d.pipe = pipe
 			close(d.done)
+			n.pipeList.Remove(ele)
 		}
+		ele = next
 	}
 
 	l = pipe
