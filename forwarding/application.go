@@ -7,6 +7,7 @@ import (
 
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/dialer"
+	"github.com/powerpuffpenguin/sf/internal/network"
 	"github.com/powerpuffpenguin/sf/listener"
 	"github.com/powerpuffpenguin/sf/pool"
 )
@@ -29,6 +30,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		listeners = make([]listener.Listener, 0, len(conf.Listener))
 		l         listener.Listener
 		pool      = pool.New(&conf.Pool)
+		nk        = network.New()
 	)
 	for _, opts := range conf.Dialer {
 		tag = opts.Tag
@@ -37,7 +39,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 			log.Error(`dialer tag repeat`, `tag`, opts.Tag)
 			return
 		}
-		d, e = dialer.New(log, pool, opts)
+		d, e = dialer.New(nk, log, pool, opts)
 		if e != nil {
 			for _, d = range dialers {
 				d.Close()
@@ -47,7 +49,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		dialers[opts.Tag] = d
 	}
 	for _, opts := range conf.Listener {
-		l, e = listener.New(log, pool, dialers, opts)
+		l, e = listener.New(nk, log, pool, dialers, opts)
 		if e != nil {
 			for _, d = range dialers {
 				d.Close()

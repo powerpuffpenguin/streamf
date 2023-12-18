@@ -10,18 +10,19 @@ import (
 	"time"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/internal/network"
 )
 
-type TcpDialer struct {
+type BasicDialer struct {
 	done       chan struct{}
 	clsoed     uint32
 	remoteAddr RemoteAddr
 	timeout    time.Duration
 	retry      int
-	rawDialer  *rawDialer
+	rawDialer  network.Dialer
 }
 
-func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *TcpDialer, e error) {
+func newBasicDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *BasicDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
 	var timeout time.Duration
 	if opts.Timeout == `` {
@@ -69,7 +70,7 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 			InsecureSkipVerify: opts.AllowInsecure,
 		}
 	}
-	rawDialer, e := newRawDialer(network, addr, cfg)
+	rawDialer, e := nk.Dialer(network, addr, cfg)
 	if e != nil {
 		log.Error(`new dialer fail`, `error`, e)
 		return
@@ -80,7 +81,7 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 		`url`, opts.URL,
 		`timeout`, timeout,
 	)
-	dialer = &TcpDialer{
+	dialer = &BasicDialer{
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
@@ -95,10 +96,10 @@ func newTcpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool
 	}
 	return
 }
-func (d *TcpDialer) Tag() string {
+func (d *BasicDialer) Tag() string {
 	return d.remoteAddr.Dialer
 }
-func (d *TcpDialer) Close() (e error) {
+func (d *BasicDialer) Close() (e error) {
 	if d.clsoed == 0 && atomic.CompareAndSwapUint32(&d.clsoed, 0, 1) {
 		close(d.done)
 	} else {
@@ -106,7 +107,7 @@ func (d *TcpDialer) Close() (e error) {
 	}
 	return
 }
-func (d *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
+func (d *BasicDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	if d.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, d.timeout)
@@ -148,7 +149,7 @@ func (d *TcpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	}
 	return
 }
-func (d *TcpDialer) connect(ctx context.Context) (conn net.Conn, e error) {
+func (d *BasicDialer) connect(ctx context.Context) (conn net.Conn, e error) {
 	for i := 0; ; i++ {
 		conn, e = d.rawDialer.DialContext(ctx)
 		if e == nil || i >= d.retry {

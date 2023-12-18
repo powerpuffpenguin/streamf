@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/internal/network"
+	"github.com/powerpuffpenguin/sf/ioutil"
 	"golang.org/x/net/http2"
 )
 
@@ -29,7 +31,7 @@ type HttpDialer struct {
 	header     http.Header
 }
 
-func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *HttpDialer, e error) {
+func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL, secure bool) (dialer *HttpDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
 	var timeout time.Duration
 	if opts.Timeout == `` {
@@ -70,8 +72,7 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 	}
 
 	var (
-		rawDialer *rawDialer
-		cfg       *tls.Config
+		cfg *tls.Config
 	)
 	if secure {
 		cfg = &tls.Config{
@@ -80,7 +81,7 @@ func newHttpDialer(log *slog.Logger, opts *config.Dialer, u *url.URL, secure boo
 			InsecureSkipVerify: opts.AllowInsecure,
 		}
 	}
-	rawDialer, e = newRawDialer(network, addr, cfg)
+	rawDialer, e := nk.Dialer(network, addr, cfg)
 	if e != nil {
 		log.Error(`new dialer fail`, `error`, e)
 		return
@@ -180,7 +181,7 @@ func (d *HttpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	}
 	return
 }
-func (d *HttpDialer) connect(ctx context.Context) (conn *httpConn, e error) {
+func (d *HttpDialer) connect(ctx context.Context) (conn io.ReadWriteCloser, e error) {
 	for i := 0; ; i++ {
 		conn, e = d.connectHttp(ctx)
 		if e == nil || i >= d.retry {
@@ -196,7 +197,7 @@ func (d *HttpDialer) connect(ctx context.Context) (conn *httpConn, e error) {
 	}
 	return
 }
-func (d *HttpDialer) connectHttp(ctx context.Context) (conn *httpConn, e error) {
+func (d *HttpDialer) connectHttp(ctx context.Context) (conn io.ReadWriteCloser, e error) {
 	r, w := io.Pipe()
 	req, e := http.NewRequest(d.method, d.remoteAddr.URL, r)
 	if e != nil {
@@ -225,20 +226,20 @@ func (d *HttpDialer) connectHttp(ctx context.Context) (conn *httpConn, e error) 
 		e = errors.New(`http body nil`)
 		return
 	}
-	conn = &httpConn{
+	conn = ioutil.NewReadWriter(resp.Body, w, &httpCloser{
 		w: w,
-		r: resp.Body,
-	}
+		r: r,
+	})
 	return
 }
 
-type httpConn struct {
+type httpCloser struct {
 	w      *io.PipeWriter
 	r      io.ReadCloser
 	closed uint32
 }
 
-func (c *httpConn) Close() (e error) {
+func (c *httpCloser) Close() (e error) {
 	if c.closed == 0 && atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
 		c.w.Close()
 		c.r.Close()
@@ -246,10 +247,4 @@ func (c *httpConn) Close() (e error) {
 		e = errClosed
 	}
 	return
-}
-func (c *httpConn) Write(b []byte) (int, error) {
-	return c.w.Write(b)
-}
-func (c *httpConn) Read(b []byte) (int, error) {
-	return c.r.Read(b)
 }

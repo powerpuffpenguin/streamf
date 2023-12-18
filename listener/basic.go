@@ -10,6 +10,7 @@ import (
 
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/dialer"
+	"github.com/powerpuffpenguin/sf/internal/network"
 	"github.com/powerpuffpenguin/sf/pool"
 )
 
@@ -22,7 +23,7 @@ type BasicListener struct {
 	duration time.Duration
 }
 
-func NewBasicListener(log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
+func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
@@ -35,7 +36,7 @@ func NewBasicListener(log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, o
 			log.Error(`new basic listener fail`, `error`, e)
 			return
 		}
-		l, e = tls.Listen(opts.Network, opts.Address, &tls.Config{
+		l, e = nk.ListenTLS(opts.Network, opts.Address, &tls.Config{
 			Certificates: []tls.Certificate{certificate},
 		})
 		if e != nil {
@@ -43,7 +44,7 @@ func NewBasicListener(log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, o
 			return
 		}
 	} else {
-		l, e = net.Listen(opts.Network, opts.Address)
+		l, e = nk.Listen(opts.Network, opts.Address)
 		if e != nil {
 			log.Error(`new basic listener fail`, `error`, e)
 			return

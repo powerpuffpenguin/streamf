@@ -13,6 +13,7 @@ import (
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/dialer"
 	"github.com/powerpuffpenguin/sf/internal/httpmux"
+	"github.com/powerpuffpenguin/sf/internal/network"
 	"github.com/powerpuffpenguin/sf/ioutil"
 	"github.com/powerpuffpenguin/sf/pool"
 	"github.com/powerpuffpenguin/sf/third-party/websocket"
@@ -31,7 +32,7 @@ type HttpListener struct {
 	upgrader          *websocket.Upgrader
 }
 
-func NewHttpListener(log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.BasicListener, routers []*config.Router) (listener *HttpListener, e error) {
+func NewHttpListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.BasicListener, routers []*config.Router) (listener *HttpListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
@@ -39,7 +40,7 @@ func NewHttpListener(log *slog.Logger, pool *pool.Pool, dialers map[string]diale
 	if opts.CertFile != `` && opts.KeyFile != `` {
 		secure = true
 	}
-	l, e = net.Listen(opts.Network, opts.Address)
+	l, e = nk.Listen(opts.Network, opts.Address)
 	if e != nil {
 		log.Error(`new http listener fail`, `error`, e)
 		return

@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/sf/internal/network"
 	"github.com/powerpuffpenguin/sf/pool"
 )
 
@@ -26,7 +27,7 @@ type Dialer interface {
 	Close() (e error)
 }
 
-func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer, e error) {
+func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer, e error) {
 	if opts.Tag == `` {
 		e = errTagEmpty
 		log.Error(`tag must not be empty`)
@@ -39,17 +40,17 @@ func New(log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer,
 	}
 	switch u.Scheme {
 	case Websocket:
-		dialer, e = newWebsocketDialer(log, opts, u, false, pool)
+		dialer, e = newWebsocketDialer(nk, log, opts, u, false, pool)
 	case WebsocketTls:
-		dialer, e = newWebsocketDialer(log, opts, u, true, pool)
+		dialer, e = newWebsocketDialer(nk, log, opts, u, true, pool)
 	case Http:
-		dialer, e = newHttpDialer(log, opts, u, false)
+		dialer, e = newHttpDialer(nk, log, opts, u, false)
 	case HttpTls:
-		dialer, e = newHttpDialer(log, opts, u, true)
+		dialer, e = newHttpDialer(nk, log, opts, u, true)
 	case Basic:
-		dialer, e = newTcpDialer(log, opts, u, false)
+		dialer, e = newBasicDialer(nk, log, opts, u, false)
 	case BasicTls:
-		dialer, e = newTcpDialer(log, opts, u, true)
+		dialer, e = newBasicDialer(nk, log, opts, u, true)
 	default:
 		e = errors.New(`url scheme not supported: ` + opts.URL)
 		log.Error(`url scheme not supported`, `url`, opts.URL)

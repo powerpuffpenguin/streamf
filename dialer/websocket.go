@@ -13,6 +13,7 @@ import (
 
 	"github.com/powerpuffpenguin/sf/config"
 	"github.com/powerpuffpenguin/sf/internal/httpmux"
+	"github.com/powerpuffpenguin/sf/internal/network"
 	"github.com/powerpuffpenguin/sf/pool"
 	"github.com/powerpuffpenguin/sf/third-party/websocket"
 )
@@ -27,7 +28,7 @@ type WebsocketDialer struct {
 	header     http.Header
 }
 
-func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
+func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL,
 	secure bool,
 	pool *pool.Pool,
 ) (dialer *WebsocketDialer, e error) {
@@ -56,7 +57,7 @@ func newWebsocketDialer(log *slog.Logger, opts *config.Dialer, u *url.URL,
 	if opts.Addr != `` {
 		addr = opts.Addr
 	}
-	rawDialer, e := newRawDialer(network, addr, nil)
+	rawDialer, e := nk.Dialer(network, addr, nil)
 	if e != nil {
 		log.Error(`new dialer fail`, `error`, e)
 		return

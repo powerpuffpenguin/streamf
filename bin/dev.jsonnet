@@ -44,6 +44,16 @@ local router = [
       allowInsecure: true,
     },
     {
+      tag: 'pipe',
+      timeout: '200ms',
+      url: 'basic://?network=pipe&addr=pipe',
+    },
+    {
+      tag: 'pipe+tls',
+      timeout: '200ms',
+      url: 'basic://?network=pipe&addr=pipe%2Btls',
+    },
+    {
       tag: 'unix',
       timeout: '200ms',
       url: 'basic://?network=unix&addr=@tcp-http.socket',
@@ -89,10 +99,24 @@ local router = [
   ],
   listener: [
     {
+      network: 'pipe',
+      address: 'pipe',
+      close: '1s',
+      dialer: 'tcp',
+    },
+    {
+      network: 'pipe',
+      address: 'pipe+tls',
+      certFile: 'test.crt',
+      keyFile: 'test.key',
+      close: '1s',
+      dialer: 'tcp+tls',
+    },
+    {
       network: 'unix',
       address: '@tcp-http.socket',
       close: '1s',
-      dialer: 'tcp',
+      dialer: 'pipe',
     },
     {
       network: 'unix',
@@ -100,7 +124,7 @@ local router = [
       certFile: 'test.crt',
       keyFile: 'test.key',
       close: '1s',
-      dialer: 'tcp+tls',
+      dialer: 'pipe+tls',
     },
     {
       network: 'tcp',
