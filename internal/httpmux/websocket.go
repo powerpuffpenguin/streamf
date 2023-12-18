@@ -3,7 +3,7 @@ package httpmux
 import (
 	"io"
 
-	"github.com/powerpuffpenguin/sf/third-party/websocket"
+	"github.com/powerpuffpenguin/streamf/third-party/websocket"
 )
 
 type WebsocketConn struct {

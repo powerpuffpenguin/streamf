@@ -4,10 +4,10 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/powerpuffpenguin/sf/config"
-	"github.com/powerpuffpenguin/sf/dialer"
-	"github.com/powerpuffpenguin/sf/internal/network"
-	"github.com/powerpuffpenguin/sf/pool"
+	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/dialer"
+	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/pool"
 )
 
 type Listener interface {

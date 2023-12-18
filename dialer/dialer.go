@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/powerpuffpenguin/sf/config"
-	"github.com/powerpuffpenguin/sf/internal/network"
-	"github.com/powerpuffpenguin/sf/pool"
+	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/pool"
 )
 
 const (

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/powerpuffpenguin/sf/third-party/websocket"
+	"github.com/powerpuffpenguin/streamf/third-party/websocket"
 )
 
 var (

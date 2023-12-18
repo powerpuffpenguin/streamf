@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/streamf/config"
 )
 
 func newLogger(conf *config.Logger) (log *slog.Logger, e error) {

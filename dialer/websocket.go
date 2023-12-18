@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/powerpuffpenguin/sf/config"
-	"github.com/powerpuffpenguin/sf/internal/httpmux"
-	"github.com/powerpuffpenguin/sf/internal/network"
-	"github.com/powerpuffpenguin/sf/pool"
-	"github.com/powerpuffpenguin/sf/third-party/websocket"
+	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/internal/httpmux"
+	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/pool"
+	"github.com/powerpuffpenguin/streamf/third-party/websocket"
 )
 
 type WebsocketDialer struct {

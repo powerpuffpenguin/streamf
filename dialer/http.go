@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/powerpuffpenguin/sf/config"
-	"github.com/powerpuffpenguin/sf/internal/network"
-	"github.com/powerpuffpenguin/sf/ioutil"
+	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/ioutil"
 	"golang.org/x/net/http2"
 )
 

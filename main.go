@@ -7,9 +7,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/powerpuffpenguin/sf/config"
-	"github.com/powerpuffpenguin/sf/forwarding"
-	ver "github.com/powerpuffpenguin/sf/version"
+	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/forwarding"
+	ver "github.com/powerpuffpenguin/streamf/version"
 )
 
 func main() {

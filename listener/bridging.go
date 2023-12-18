@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/powerpuffpenguin/sf/pool"
-	"github.com/powerpuffpenguin/sf/third-party/websocket"
+	"github.com/powerpuffpenguin/streamf/pool"
+	"github.com/powerpuffpenguin/streamf/third-party/websocket"
 )
 
 type websocketConn interface {

@@ -3,7 +3,7 @@ package pool
 import (
 	"sync"
 
-	"github.com/powerpuffpenguin/sf/config"
+	"github.com/powerpuffpenguin/streamf/config"
 )
 
 type Pool struct {
