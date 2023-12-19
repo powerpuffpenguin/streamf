@@ -23,11 +23,11 @@ const (
 func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Listener) (l Listener, e error) {
 	switch opts.Mode {
 	case Basic, "":
-		if found, ok := dialers[opts.Dialer]; ok {
-			l, e = NewBasicListener(nk, log, pool, found, &opts.BasicListener)
+		if found, ok := dialers[opts.Dialer.Tag]; ok {
+			l, e = NewBasicListener(nk, log, pool, found, &opts.Dialer, &opts.BasicListener)
 		} else {
-			e = errors.New(`dialer not found: ` + opts.Dialer)
-			log.Error(`dialer not found`, `dialer`, opts.Dialer)
+			e = errors.New(`dialer not found: ` + opts.Dialer.Tag)
+			log.Error(`dialer not found`, `dialer`, opts.Dialer.Tag)
 		}
 	case Http:
 		l, e = NewHttpListener(nk, log, pool, dialers, &opts.BasicListener, opts.Router)

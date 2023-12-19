@@ -89,12 +89,29 @@ local router = [
     {
       tag: 'h2-ws',
       timeout: '200ms',
-      // url: 'http://127.0.0.1:4000/http2',
-      // method: 'POST',
       url: 'https://127.0.0.1:4443/http2',
       method: 'PATCH',
       access: 'test access token',
       allowInsecure: true,
+    },
+    {
+      tag: 'portal',
+      timeout: '200ms',
+      url: 'portal://portal',
+      bridge: 'dialer tag',
+    },
+  ],
+  bridge: [
+    {
+      network: 'pipe',
+      addr: 'portal',
+    },
+  ],
+  portal: [
+    {
+      tag: 'portal',
+      network: 'pipe',
+      address: 'portal',
     },
   ],
   listener: [

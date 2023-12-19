@@ -1,26 +1,3 @@
-[中文](README.zh.md)
-# streamf
-
-This is a port forwarding program written in golang. But it doesn't just forward port data, it also supports forwarding streams. That is, data of a certain stream protocol is forwarded to another stream.
-
-For example you can convert tcp data to websocket stream and vice versa.
-
-index:
-
-* [run](#run)
-  * [basic](#basic)
-
-# run
-
-Please use -conf to pass in the configuration file path to run the program
-
-```
-./streamf -conf your_configure_path
-```
-
-# basic
-
-```
 // curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
 // This is an example of port forwarding
 {
@@ -52,7 +29,7 @@ Please use -conf to pass in the configuration file path to run the program
       network: 'tcp',
       address: ':4000',
       dialer: {
-        // Forward to the dialer with tag 'tcp+tls'
+        // Forward to the dialer with tag 'tcp'
         tag: 'tcp+tls',
         // After one end of the connection is disconnected, wait for one second before closing the other end
         //  (waiting for untransmitted data to continue transmitting)
@@ -75,8 +52,3 @@ Please use -conf to pass in the configuration file path to run the program
     },
   ],
 }
-```
-
-```
-curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
-```

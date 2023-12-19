@@ -28,7 +28,6 @@ type HttpListener struct {
 	pool              *pool.Pool
 	log               *slog.Logger
 	closed            uint32
-	duration          time.Duration
 	upgrader          *websocket.Upgrader
 }
 
@@ -37,7 +36,7 @@ func NewHttpListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dia
 		l      net.Listener
 		secure bool
 	)
-	if opts.CertFile != `` && opts.KeyFile != `` {
+	if opts.TLS.CertFile != `` && opts.TLS.KeyFile != `` {
 		secure = true
 	}
 	l, e = nk.Listen(opts.Network, opts.Address)
@@ -55,28 +54,14 @@ func NewHttpListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dia
 		}
 	}
 	log = log.With(`listener`, tag)
-	var duration time.Duration
-	if opts.Close == `` {
-		duration = time.Second
-	} else {
-		var err error
-		duration, err = time.ParseDuration(opts.Close)
-		if err != nil {
-			duration = time.Second
-			log.Warn(`parse duration fail, used default close duration.`,
-				`error`, err,
-				`close`, duration,
-			)
-		}
-	}
-	log.Info(`new http listener`, `close`, duration)
+
+	log.Info(`new http listener`)
 	listener = &HttpListener{
-		certFile: opts.CertFile,
-		keyFile:  opts.KeyFile,
+		certFile: opts.TLS.CertFile,
+		keyFile:  opts.TLS.KeyFile,
 		listener: l,
 		pool:     pool,
 		log:      log,
-		duration: duration,
 	}
 	var (
 		mux     = httpmux.New(log)
@@ -156,12 +141,28 @@ func (l *HttpListener) access(r *http.Request, accessToken string) bool {
 }
 func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *config.Router) (handler http.HandlerFunc, e error) {
 	log := l.log
-	dialer, ok := dialers[router.Dialer]
+	dialer, ok := dialers[router.Dialer.Tag]
 	if !ok {
-		e = errors.New(`dialer not found: ` + router.Dialer)
-		log.Error(`dialer not found`, `dialer`, router.Dialer)
+		e = errors.New(`dialer not found: ` + router.Dialer.Tag)
+		log.Error(`dialer not found`, `dialer`, router.Dialer.Tag)
 		return
 	}
+	var closeDuration time.Duration
+	if router.Dialer.Close == `` {
+		closeDuration = time.Second
+	} else {
+		var err error
+		closeDuration, err = time.ParseDuration(router.Dialer.Close)
+		if err != nil {
+			closeDuration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, err,
+				`close`, router.Dialer.Close,
+				`default`, closeDuration,
+			)
+		}
+	}
+
 	log = log.With(`dialer`, router.Dialer)
 	var accessToken string
 	if router.Access != `` {
@@ -171,12 +172,14 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 		log.Info(`new router`,
 			`method`, router.Method,
 			`pattern`, router.Pattern,
+			`close`, closeDuration,
 		)
 	} else {
 		log.Info(`new router`,
 			`method`, router.Method,
 			`pattern`, router.Pattern,
 			`access`, router.Access,
+			`close`, closeDuration,
 		)
 	}
 	handler = func(w http.ResponseWriter, r *http.Request) {
@@ -205,16 +208,16 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 			`url`, addr.URL,
 		)
 		w.WriteHeader(http.StatusOK)
-		bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, l.duration)
+		bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
 	return
 }
 func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router *config.Router) (handler http.HandlerFunc, e error) {
 	log := l.log
-	dialer, ok := dialers[router.Dialer]
+	dialer, ok := dialers[router.Dialer.Tag]
 	if !ok {
-		e = errors.New(`dialer not found: ` + router.Dialer)
-		log.Error(`dialer not found`, `dialer`, router.Dialer)
+		e = errors.New(`dialer not found: ` + router.Dialer.Tag)
+		log.Error(`dialer not found`, `dialer`, router.Dialer.Tag)
 		return
 	}
 	log = log.With(`dialer`, router.Dialer)
@@ -222,16 +225,33 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
 	}
+	var closeDuration time.Duration
+	if router.Dialer.Close == `` {
+		closeDuration = time.Second
+	} else {
+		var err error
+		closeDuration, err = time.ParseDuration(router.Dialer.Close)
+		if err != nil {
+			closeDuration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, err,
+				`close`, router.Dialer.Close,
+				`default`, closeDuration,
+			)
+		}
+	}
 	if router.Access == `` {
 		log.Info(`new router`,
 			`method`, `WebSocket`,
 			`pattern`, router.Pattern,
+			`close`, closeDuration,
 		)
 	} else {
 		log.Info(`new router`,
 			`method`, `WebSocket`,
 			`pattern`, router.Pattern,
 			`access`, router.Access,
+			`close`, closeDuration,
 		)
 	}
 	upgrader := l.getUpgrader()
@@ -265,7 +285,7 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 			`secure`, addr.Secure,
 			`url`, addr.URL,
 		)
-		bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, l.duration)
+		bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
 	return
 }

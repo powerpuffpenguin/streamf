@@ -23,21 +23,17 @@ type BasicListener struct {
 	duration time.Duration
 }
 
-func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, opts *config.BasicListener) (listener *BasicListener, e error) {
-	var (
-		l      net.Listener
-		secure bool
-	)
-	if opts.CertFile != `` && opts.KeyFile != `` {
-		secure = true
-		var certificate tls.Certificate
-		certificate, e = tls.LoadX509KeyPair(opts.CertFile, opts.KeyFile)
-		if e != nil {
-			log.Error(`new basic listener fail`, `error`, e)
-			return
-		}
+func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, connect *config.ConnectDialer, opts *config.BasicListener) (listener *BasicListener, e error) {
+	secure, certificate, alpn, e := opts.TLS.Certificate()
+	if e != nil {
+		log.Error(`new basic listener fail`, `error`, e)
+		return
+	}
+	var l net.Listener
+	if secure {
 		l, e = nk.ListenTLS(opts.Network, opts.Address, &tls.Config{
 			Certificates: []tls.Certificate{certificate},
+			NextProtos:   alpn,
 		})
 		if e != nil {
 			log.Error(`new basic listener fail`, `error`, e)
@@ -62,16 +58,17 @@ func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, di
 	}
 	log = log.With(`listener`, tag, `dialer`, dialer.Tag())
 	var duration time.Duration
-	if opts.Close == `` {
+	if connect.Close == `` {
 		duration = time.Second
 	} else {
 		var err error
-		duration, err = time.ParseDuration(opts.Close)
+		duration, err = time.ParseDuration(connect.Close)
 		if err != nil {
 			duration = time.Second
 			log.Warn(`parse duration fail, used default close duration.`,
 				`error`, err,
-				`close`, duration,
+				`close`, connect.Close,
+				`default`, duration,
 			)
 		}
 	}
