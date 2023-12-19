@@ -9,6 +9,7 @@ index:
 
 * [run](#run)
   * [basic](#basic)
+  * [http](#http)
 
 # run
 
@@ -19,9 +20,9 @@ Please use -conf to pass in the configuration file path to run the program
 ```
 
 # basic
+basic is the most basic forwarder. It is the tcp port forwarding program that can be found everywhere on the Internet.
 
 ```
-// curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
 // This is an example of port forwarding
 {
   // Set a basic forwarding target
@@ -79,4 +80,16 @@ Please use -conf to pass in the configuration file path to run the program
 
 ```
 curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
+```
+
+# http
+
+http mode can support http in and out streams:
+
+* websocket is supported in http1.1, which supports bidirectional data flow
+* http2.0 also supports streaming for ordinary requests.
+
+
+```
+curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 ```

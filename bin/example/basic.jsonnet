@@ -1,4 +1,3 @@
-// curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
 // This is an example of port forwarding
 {
   // Set a basic forwarding target

@@ -9,6 +9,7 @@ index:
 
 * [run](#run)
   * [basic](#basic)
+  * [http](#http)
 
 # run
 
@@ -19,6 +20,7 @@ index:
 ```
 
 # basic
+basic 是最基礎的轉發器，她就是網路上隨處可見 tcp 端口轉發程式
 
 ```
 // 這是一個端口轉發例子
@@ -78,4 +80,15 @@ index:
 
 ```
 curl https://127.0.0.1:4443/test/tls http://127.0.0.1:4000/test/tcp  -k
+```
+
+# http
+
+http 模式能夠支持 http 入棧和出棧流:
+
+* websocket 在 http1.1 中被支持，它支持雙向數據流
+* http2.0 對普通請求也支持了流
+
+```
+curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 ```

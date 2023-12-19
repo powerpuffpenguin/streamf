@@ -163,20 +163,18 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 		}
 	}
 
-	log = log.With(`dialer`, router.Dialer)
+	log = log.With(`method`, router.Method, `dialer`, router.Dialer.Tag)
 	var accessToken string
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
 	}
 	if router.Access == `` {
 		log.Info(`new router`,
-			`method`, router.Method,
 			`pattern`, router.Pattern,
 			`close`, closeDuration,
 		)
 	} else {
 		log.Info(`new router`,
-			`method`, router.Method,
 			`pattern`, router.Pattern,
 			`access`, router.Access,
 			`close`, closeDuration,
@@ -220,7 +218,7 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 		log.Error(`dialer not found`, `dialer`, router.Dialer.Tag)
 		return
 	}
-	log = log.With(`dialer`, router.Dialer)
+	log = log.With(`method`, `WebSocket`, `dialer`, router.Dialer.Tag)
 	var accessToken string
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
@@ -242,7 +240,6 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 	}
 	if router.Access == `` {
 		log.Info(`new router`,
-			`method`, `WebSocket`,
 			`pattern`, router.Pattern,
 			`close`, closeDuration,
 		)
