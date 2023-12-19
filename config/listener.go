@@ -27,18 +27,19 @@ func (t *TLS) Secure() bool {
 func (t *TLS) Certificate() (secure bool, certificate tls.Certificate, alpn []string, e error) {
 	if t.Cert != `` && t.Key != `` {
 		secure = true
-		return
+		certificate, e = tls.X509KeyPair([]byte(t.Cert), []byte(t.Key))
 	} else if t.CertFile != `` && t.KeyFile != `` {
 		secure = true
 		certificate, e = tls.LoadX509KeyPair(t.CertFile, t.KeyFile)
-		if e != nil {
-			return
-		}
-		alpn = t.Alpn
-		if len(alpn) == 0 {
-			alpn = []string{`h2`, `http/1.1`}
-		}
+	} else {
 		return
+	}
+	if e != nil {
+		return
+	}
+	alpn = t.Alpn
+	if len(alpn) == 0 {
+		alpn = []string{`h2`, `http/1.1`}
 	}
 	return
 }
