@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/powerpuffpenguin/streamf/bridge"
 	"github.com/powerpuffpenguin/streamf/config"
 	"github.com/powerpuffpenguin/streamf/dialer"
 	"github.com/powerpuffpenguin/streamf/internal/network"
@@ -13,6 +14,7 @@ import (
 )
 
 type Application struct {
+	bridges   []bridge.Bridge
 	listeners []listener.Listener
 	log       *slog.Logger
 }
@@ -23,6 +25,8 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		return
 	}
 	var (
+		bridges   = make([]bridge.Bridge, 0, len(conf.Bridge))
+		b         bridge.Bridge
 		tag       string
 		dialers   = make(map[string]dialer.Dialer, len(conf.Dialer))
 		d         dialer.Dialer
@@ -48,9 +52,25 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		}
 		dialers[opts.Tag] = d
 	}
+	for _, opts := range conf.Bridge {
+		b, e = bridge.New(nk, log, pool, dialers, opts)
+		if e != nil {
+			for _, d = range dialers {
+				d.Close()
+			}
+			for _, b := range bridges {
+				b.Close()
+			}
+			return
+		}
+		bridges = append(bridges, b)
+	}
 	for _, opts := range conf.Listener {
 		l, e = listener.New(nk, log, pool, dialers, opts)
 		if e != nil {
+			for _, b := range bridges {
+				b.Close()
+			}
 			for _, d = range dialers {
 				d.Close()
 			}
@@ -62,37 +82,65 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		listeners = append(listeners, l)
 	}
 	app = &Application{
+		bridges:   bridges,
 		listeners: listeners,
 		log:       log,
 	}
 	return
 }
 func (a *Application) Serve() {
-	listeners := a.listeners
-	n := len(listeners)
+	nb := len(a.bridges)
+	if nb == 0 {
+		serve(a.listeners)
+		return
+	}
+	nl := len(a.listeners)
+	if nl == 0 {
+		serve(a.bridges)
+		return
+	}
+
+	var wait sync.WaitGroup
+	wait.Add(nb + nl)
+	for _, item := range a.bridges {
+		go serveWait(&wait, item)
+	}
+	for _, item := range a.listeners {
+		go serveWait(&wait, item)
+	}
+	wait.Wait()
+}
+
+type iserve interface {
+	Serve() error
+}
+
+func serveWait(wait *sync.WaitGroup, item iserve) {
+	defer wait.Done()
+	item.Serve()
+}
+func serve[T iserve](items []T) {
+	n := len(items)
 	switch n {
 	case 0:
 	case 1:
-		listeners[0].Serve()
+		items[0].Serve()
 	case 2:
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			listeners[0].Serve()
+			items[0].Serve()
 		}()
-		listeners[1].Serve()
+		items[1].Serve()
 		<-done
 	default:
 		var wait sync.WaitGroup
 		n--
 		for i := 0; i < n; i++ {
 			wait.Add(1)
-			go func(l listener.Listener) {
-				defer wait.Done()
-				l.Serve()
-			}(listeners[i])
+			go serveWait(&wait, items[i])
 		}
-		listeners[n].Serve()
+		items[n].Serve()
 		wait.Wait()
 	}
 }

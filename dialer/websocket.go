@@ -20,7 +20,7 @@ import (
 
 type WebsocketDialer struct {
 	done       chan struct{}
-	clsoed     uint32
+	closed     uint32
 	remoteAddr RemoteAddr
 	timeout    time.Duration
 	retry      int
@@ -112,7 +112,7 @@ func (t *WebsocketDialer) Tag() string {
 	return t.remoteAddr.Dialer
 }
 func (t *WebsocketDialer) Close() (e error) {
-	if t.clsoed == 0 && atomic.CompareAndSwapUint32(&t.clsoed, 0, 1) {
+	if t.closed == 0 && atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
 		close(t.done)
 		e = t.rawDialer.Close()
 	} else {

@@ -1,4 +1,4 @@
-package listener
+package network
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ type websocketConn interface {
 	Websocket() *websocket.Conn
 }
 
-func bridging(c0, c1 io.ReadWriteCloser, pool *pool.Pool, duration time.Duration) {
+func Bridging(c0, c1 io.ReadWriteCloser, pool *pool.Pool, duration time.Duration) {
 	defer c0.Close()
 	defer c1.Close()
 	w0, ok0 := c0.(websocketConn)

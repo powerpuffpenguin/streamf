@@ -31,7 +31,11 @@ type HttpListener struct {
 	upgrader          *websocket.Upgrader
 }
 
-func NewHttpListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.BasicListener, routers []*config.Router) (listener *HttpListener, e error) {
+func NewHttpListener(nk *network.Network,
+	log *slog.Logger, pool *pool.Pool,
+	dialers map[string]dialer.Dialer,
+	opts *config.BasicListener, routers []*config.Router,
+) (listener *HttpListener, e error) {
 	var (
 		l      net.Listener
 		secure bool
@@ -206,7 +210,7 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 			`url`, addr.URL,
 		)
 		w.WriteHeader(http.StatusOK)
-		bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, closeDuration)
+		network.Bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
 	return
 }
@@ -282,7 +286,7 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 			`secure`, addr.Secure,
 			`url`, addr.URL,
 		)
-		bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
+		network.Bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
 	return
 }

@@ -133,5 +133,5 @@ func (l *BasicListener) serve(src net.Conn) {
 		`secure`, addr.Secure,
 		`url`, addr.URL,
 	)
-	bridging(src, dst.ReadWriteCloser, l.pool, l.duration)
+	network.Bridging(src, dst.ReadWriteCloser, l.pool, l.duration)
 }

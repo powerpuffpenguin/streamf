@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/powerpuffpenguin/vnet"
+	"github.com/powerpuffpenguin/vnet/reverse"
 )
 
 type Dialer interface {
@@ -70,5 +71,38 @@ func (d *pipeDialer) DialContext(ctx context.Context) (conn net.Conn, e error) {
 	return
 }
 func (d *pipeDialer) Close() error {
+	return nil
+}
+
+type portalDialer struct {
+	addr   string
+	cfg    *tls.Config
+	portal *reverse.Dialer
+	done   chan struct{}
+}
+
+func (d *portalDialer) DialContext(ctx context.Context) (conn net.Conn, e error) {
+	select {
+	case <-d.done:
+	case <-ctx.Done():
+		e = ctx.Err()
+		return
+	}
+	conn, e = d.portal.DialContext(ctx, `pipe`, d.addr)
+	if d.cfg == nil || e != nil {
+		return
+	}
+
+	tlsConn := tls.Client(conn, d.cfg.Clone())
+	e = tlsConn.HandshakeContext(ctx)
+	if e == nil {
+		conn = tlsConn
+	} else {
+		conn.Close()
+		conn = nil
+	}
+	return
+}
+func (d *portalDialer) Close() error {
 	return nil
 }

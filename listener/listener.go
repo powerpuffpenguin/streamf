@@ -16,8 +16,9 @@ type Listener interface {
 }
 
 const (
-	Basic = `basic`
-	Http  = `http`
+	Basic  = `basic`
+	Http   = `http`
+	Portal = `portal`
 )
 
 func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Listener) (l Listener, e error) {
@@ -31,6 +32,8 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[str
 		}
 	case Http:
 		l, e = NewHttpListener(nk, log, pool, dialers, &opts.BasicListener, opts.Router)
+	case Portal:
+		l, e = NewPortalListener(nk, log, &opts.BasicListener, &opts.Portal)
 	default:
 		e = errors.New(`listener mode not supported: ` + opts.Mode)
 		log.Error(`listener mode not supported`, `mode`, opts.Mode)

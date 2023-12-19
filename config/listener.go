@@ -47,13 +47,23 @@ func (t *TLS) Certificate() (secure bool, certificate tls.Certificate, alpn []st
 // Listener to receive incoming traffic
 type Listener struct {
 	BasicListener
-	// work mode, "basic" or "http"
+	// work mode, "basic" or "http" or "portal"
 	// default is "basic"
 	Mode string `json:"mode"`
 	// Specify forwarding destination in "basic" mode
 	Dialer ConnectDialer `json:"dialer"`
 	// Specify route for http mode
 	Router []*Router `json:"router"`
+	Portal Portal    `json:"portal"`
+}
+type Portal struct {
+	// Wait connect timeout
+	// Default 500ms
+	Timeout string `json:"timeout"`
+	// How often does an idle connection send a heartbeat?
+	Heart string `json:"heart"`
+	// Timeout for waiting for heartbeat response
+	HeartTimeout string `json:"heartTimeout"`
 }
 type Router struct {
 	// POST PUT PATCH WS
@@ -66,6 +76,8 @@ type Router struct {
 	//  * 'ws://example.com/anypath?access_token=access_token=Bearer%20' + rawURLBase64(XXXXX)
 	//  * curl -H "Authorization: Bearer " + rawURLBase64(XXXXX)
 	Access string `json:"access"`
+
+	Portal bool `json:"portal"`
 }
 type ConnectDialer struct {
 	// Connect dialer with tag 'tcp'
