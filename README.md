@@ -12,6 +12,7 @@ index:
   * [http](#http)
   * [unix](#unix)
   * [pipe](#pipe)
+  * [portal-bridge](#portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
 
@@ -322,3 +323,5 @@ pool sets the read and write cache for the connection
   },
 }
 ```
+
+# portal-bridge

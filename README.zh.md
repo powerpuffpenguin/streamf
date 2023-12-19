@@ -12,6 +12,7 @@ index:
   * [http](#http)
   * [unix](#unix)
   * [pipe](#pipe)
+  * [portal-bridge](#portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
 
@@ -322,3 +323,7 @@ pool 爲連接設置讀寫緩存
   },
 }
 ```
+
+# portal-bridge
+
+有時我們需要將一個內網的服務映射到公網這是可以使用 portal-bridge 功能。
