@@ -6,18 +6,18 @@
       url: 'basic://example.com?addr=localhost:2000',
     },
     {
-      tag: 'unix+tls',
+      tag: 'pipe+tls',
       timeout: '200ms',
       url: 'basic+tls://example.com',
-      network: 'unix',
-      addr: '@streamf/unix.socket',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
       allowInsecure: true,
     },
   ],
   listener: [
     {
-      network: 'unix',
-      addr: '@streamf/unix.socket',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
       dialer: {
         tag: 'tcp',
         close: '1s',
@@ -31,7 +31,7 @@
       network: 'tcp',
       addr: ':4000',
       dialer: {
-        tag: 'unix+tls',
+        tag: 'pipe+tls',
         close: '1s',
       },
     },

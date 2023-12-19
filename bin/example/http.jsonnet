@@ -70,7 +70,7 @@
   listener: [
     {
       network: 'tcp',
-      address: ':4000',
+      addr: ':4000',
       // Specify to use 'http' mode
       mode: 'http',
       // Specify route
@@ -78,10 +78,8 @@
     },
     {
       network: 'tcp',
-      address: ':4443',
-      // Specify to use 'http' mode
+      addr: ':4443',
       mode: 'http',
-      // Specify route
       router: router,
       tls: {
         certFile: 'test.crt',

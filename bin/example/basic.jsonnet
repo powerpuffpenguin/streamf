@@ -7,7 +7,7 @@
       tag: 'tcp',
       // Connection timeout
       timeout: '200ms',
-      // Connection URL, optional parameters network and addr override the address in the URL
+      // Connection URL, optional parameters network and addr override the addr in the URL
       url: 'basic://example.com?addr=localhost:2000',
     },
     {
@@ -15,7 +15,7 @@
       timeout: '200ms',
       // +tls specifies to use tls to connect
       url: 'basic+tls://example.com',
-      // Explicitly specify the connection address
+      // Explicitly specify the connection addr
       network: 'tcp',
       addr: 'localhost:2443',
       // Do not verify server certificate
@@ -26,7 +26,7 @@
     // This listener receives tcp connections
     {
       network: 'tcp',
-      address: ':4000',
+      addr: ':4000',
       dialer: {
         // Forward to the dialer with tag 'tcp'
         tag: 'tcp+tls',
@@ -38,7 +38,7 @@
     // This listener receives tls connections
     {
       network: 'tcp',
-      address: ':4443',
+      addr: ':4443',
       dialer: {
         tag: 'tcp',
         close: '1s',

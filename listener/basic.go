@@ -31,7 +31,7 @@ func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, di
 	}
 	var l net.Listener
 	if secure {
-		l, e = nk.ListenTLS(opts.Network, opts.Address, &tls.Config{
+		l, e = nk.ListenTLS(opts.Network, opts.Addr, &tls.Config{
 			Certificates: []tls.Certificate{certificate},
 			NextProtos:   alpn,
 		})
@@ -40,7 +40,7 @@ func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, di
 			return
 		}
 	} else {
-		l, e = nk.Listen(opts.Network, opts.Address)
+		l, e = nk.Listen(opts.Network, opts.Addr)
 		if e != nil {
 			log.Error(`new basic listener fail`, `error`, e)
 			return

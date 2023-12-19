@@ -8,7 +8,7 @@ type BasicListener struct {
 	// Custom name recorded in logs
 	Tag     string `json:"tag"`
 	Network string `json:"network"`
-	Address string `json:"address"`
+	Addr    string `json:"addr"`
 
 	TLS TLS `json:"tls"`
 }
