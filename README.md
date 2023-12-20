@@ -520,6 +520,10 @@ local portal = {
 }
 ```
 
+```
+curl http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002
+```
+
 # logger
 
 logger is used to set logs
