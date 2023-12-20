@@ -3,13 +3,14 @@ package forwarding
 import (
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/powerpuffpenguin/streamf/config"
 )
 
 func newLogger(conf *config.Logger) (log *slog.Logger, e error) {
 	var level slog.Level
-	switch conf.Level {
+	switch strings.ToLower(conf.Level) {
 	case "debug":
 		level = slog.LevelDebug
 	case "warn":

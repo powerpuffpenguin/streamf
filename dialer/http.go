@@ -20,6 +20,7 @@ import (
 )
 
 type HttpDialer struct {
+	log        *slog.Logger
 	done       chan struct{}
 	closed     uint32
 	remoteAddr RemoteAddr
@@ -102,6 +103,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 		}
 	}
 	dialer = &HttpDialer{
+		log:  log,
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
@@ -179,6 +181,11 @@ func (d *HttpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
+	}
+	if e == nil {
+		d.log.Debug(`http connect success`, `error`, e)
+	} else {
+		d.log.Debug(`http connect fail`, `error`, e)
 	}
 	return
 }

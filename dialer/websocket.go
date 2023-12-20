@@ -19,6 +19,7 @@ import (
 )
 
 type WebsocketDialer struct {
+	log        *slog.Logger
 	done       chan struct{}
 	closed     uint32
 	remoteAddr RemoteAddr
@@ -78,6 +79,7 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 		}
 	}
 	dialer = &WebsocketDialer{
+		log:  log,
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
@@ -160,6 +162,11 @@ func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
+	}
+	if e == nil {
+		d.log.Debug(`websocket connect success`, `error`, e)
+	} else {
+		d.log.Debug(`websocket connect fail`, `error`, e)
 	}
 	return
 }

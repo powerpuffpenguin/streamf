@@ -14,6 +14,7 @@ import (
 )
 
 type BasicDialer struct {
+	log        *slog.Logger
 	done       chan struct{}
 	closed     uint32
 	remoteAddr RemoteAddr
@@ -82,6 +83,7 @@ func newBasicDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, 
 		`timeout`, timeout,
 	)
 	dialer = &BasicDialer{
+		log:  log,
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
@@ -147,6 +149,11 @@ func (d *BasicDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		e = ctx.Err()
 	case result := <-ch:
 		conn, e = result.Conn, result.Error
+	}
+	if e == nil {
+		d.log.Debug(`basic connect success`, `error`, e)
+	} else {
+		d.log.Debug(`basic connect fail`, `error`, e)
 	}
 	return
 }

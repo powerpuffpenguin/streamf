@@ -16,8 +16,10 @@ func main() {
 	var (
 		conf          string
 		version, help bool
+		logLevel      string
 	)
 	flag.StringVar(&conf, "conf", "", "Load config file path")
+	flag.StringVar(&logLevel, "log", "", "Log level [debug info warn error]")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.BoolVar(&help, "help", false, "Show help")
 	flag.Parse()
@@ -44,9 +46,11 @@ func main() {
 	if e != nil {
 		log.Fatalln(e)
 	}
+	if logLevel != `` {
+		c.Logger.Level = logLevel
+	}
 	app, e := forwarding.NewApplication(&c)
 	if e != nil {
-		log.Fatalln(e)
 		return
 	}
 	app.Serve()

@@ -11,9 +11,43 @@ import (
 	"github.com/powerpuffpenguin/streamf/internal/ioutil"
 )
 
+type connectResult struct {
+	conn net.Conn
+	e    error
+}
+
 func ConnectHttp(ctx context.Context, client *http.Client, method, url string, header http.Header) (conn net.Conn, e error) {
+	newctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan connectResult)
+	go func() {
+		conn, e := connectHttp(newctx, cancel, client, method, url, header)
+		select {
+		case <-ctx.Done():
+			if e == nil {
+				conn.Close()
+			}
+		case ch <- connectResult{
+			conn: conn,
+			e:    e,
+		}:
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		e = ctx.Err()
+		cancel()
+	case result := <-ch:
+		conn = result.conn
+		e = result.e
+		if e != nil {
+			cancel()
+		}
+	}
+	return
+}
+func connectHttp(ctx context.Context, cancel context.CancelFunc, client *http.Client, method, url string, header http.Header) (conn net.Conn, e error) {
 	r, w := io.Pipe()
-	req, e := http.NewRequest(method, url, r)
+	req, e := http.NewRequestWithContext(ctx, method, url, r)
 	if e != nil {
 		w.Close()
 		return
@@ -41,8 +75,9 @@ func ConnectHttp(ctx context.Context, client *http.Client, method, url string, h
 		return
 	}
 	conn = ioutil.NewReadWriter(resp.Body, w, &httpCloser{
-		w: w,
-		r: r,
+		cancel: cancel,
+		w:      w,
+		r:      r,
 	})
 	return
 }
@@ -51,12 +86,14 @@ type httpCloser struct {
 	w      *io.PipeWriter
 	r      io.ReadCloser
 	closed uint32
+	cancel context.CancelFunc
 }
 
 func (c *httpCloser) Close() (e error) {
 	if c.closed == 0 && atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
 		c.w.Close()
 		c.r.Close()
+		c.cancel()
 	} else {
 		e = ErrDialerClosed
 	}
