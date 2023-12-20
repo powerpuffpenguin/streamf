@@ -57,6 +57,7 @@ type Listener struct {
 	Portal Portal    `json:"portal"`
 }
 type Portal struct {
+	Tag string `json:"tag"`
 	// Wait connect timeout
 	// Default 500ms
 	Timeout string `json:"timeout"`
@@ -77,7 +78,8 @@ type Router struct {
 	//  * curl -H "Authorization: Bearer " + rawURLBase64(XXXXX)
 	Access string `json:"access"`
 
-	Portal bool `json:"portal"`
+	// Portal tag, if not emoty, enable portal mode
+	Portal Portal `json:"portal"`
 }
 type ConnectDialer struct {
 	// Connect dialer with tag 'tcp'

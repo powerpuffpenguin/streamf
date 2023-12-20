@@ -123,7 +123,8 @@ func (n *Network) Dialer(network string, addr string, cfg *tls.Config) (dialer D
 	}
 	return
 }
-func (n *Network) NewPortal(log *slog.Logger, tag string, l net.Listener, portal *config.Portal) (dialer *reverse.Dialer, e error) {
+func (n *Network) NewPortal(log *slog.Logger, l net.Listener, portal *config.Portal) (dialer *reverse.Dialer, e error) {
+	tag := portal.Tag
 	if _, ok := n.portal[tag]; ok {
 		e = errors.New(`portal already exists: ` + tag)
 		return

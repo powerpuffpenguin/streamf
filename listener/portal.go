@@ -54,7 +54,10 @@ func NewPortalListener(nk *network.Network,
 		}
 	}
 	log = log.With(`listener`, tag)
-	dialer, e := nk.NewPortal(log, tag, l, portal)
+	if portal.Tag == `` {
+		portal.Tag = tag
+	}
+	dialer, e := nk.NewPortal(log, l, portal)
 	if e != nil {
 		log.Error(`new portal listener fail`, `error`, e)
 		return

@@ -88,7 +88,7 @@ func (d *portalDialer) DialContext(ctx context.Context) (conn net.Conn, e error)
 		e = ctx.Err()
 		return
 	}
-	conn, e = d.portal.DialContext(ctx, `pipe`, d.addr)
+	conn, e = d.portal.DialContext(ctx, `portal`, d.addr)
 	if d.cfg == nil || e != nil {
 		return
 	}

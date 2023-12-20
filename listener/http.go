@@ -3,6 +3,7 @@ package listener
 import (
 	"encoding/base64"
 	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 )
 
 type HttpListener struct {
+	done              chan struct{}
 	server            http.Server
 	listener          net.Listener
 	certFile, keyFile string
@@ -29,6 +31,8 @@ type HttpListener struct {
 	log               *slog.Logger
 	closed            uint32
 	upgrader          *websocket.Upgrader
+
+	closer []io.Closer
 }
 
 func NewHttpListener(nk *network.Network,
@@ -61,6 +65,7 @@ func NewHttpListener(nk *network.Network,
 
 	log.Info(`new http listener`)
 	listener = &HttpListener{
+		done:     make(chan struct{}),
 		certFile: opts.TLS.CertFile,
 		keyFile:  opts.TLS.KeyFile,
 		listener: l,
@@ -76,33 +81,37 @@ func NewHttpListener(nk *network.Network,
 		case ``, http.MethodPost:
 			handler, e = listener.createHttp2(dialers, router)
 			if e != nil {
-				l.Close()
+				listener.Close()
 				return
 			}
 			mux.Post(router.Pattern, handler)
 		case http.MethodPut:
 			handler, e = listener.createHttp2(dialers, router)
 			if e != nil {
-				l.Close()
+				listener.Close()
 				return
 			}
 			mux.Put(router.Pattern, handler)
 		case http.MethodPatch:
 			handler, e = listener.createHttp2(dialers, router)
 			if e != nil {
-				l.Close()
+				listener.Close()
 				return
 			}
 			mux.Patch(router.Pattern, handler)
 		case `WS`:
-			handler, e = listener.createWebsocket(dialers, router)
+			if router.Portal.Tag == `` {
+				handler, e = listener.createWebsocket(dialers, router)
+			} else {
+				handler, e = listener.createWebsocketPortal(nk, router)
+			}
 			if e != nil {
-				l.Close()
+				listener.Close()
 				return
 			}
 			mux.Get(router.Pattern, handler)
 		default:
-			l.Close()
+			listener.Close()
 			e = errHttpMethod
 			log.Warn(`http method not supported`,
 				`error`, e,
@@ -117,6 +126,7 @@ func NewHttpListener(nk *network.Network,
 		listener.server.Handler = h2c.NewHandler(mux, &http2Server)
 		e = http2.ConfigureServer(&listener.server, &http2Server)
 		if e != nil {
+			close(listener.done)
 			l.Close()
 			log.Error(`configure h2c server fail, used default close duration.`,
 				`error`, e,
@@ -214,6 +224,62 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 	}
 	return
 }
+func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config.Router) (handler http.HandlerFunc, e error) {
+	log := l.log.With(`portal`, router.Portal.Tag)
+	var accessToken string
+	if router.Access != `` {
+		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
+	}
+	listener := newHttpListener(l.done,
+		network.NewAddr(`portal`, router.Portal.Tag),
+	)
+	dialer, e := nk.NewPortal(log, listener, &router.Portal)
+	if e != nil {
+		log.Error(`new portal listener fail`, `error`, e)
+		return
+	}
+	go dialer.Serve()
+	l.closer = append(l.closer, dialer)
+	if router.Access == `` {
+		log.Info(`new portal router`,
+			`pattern`, router.Pattern,
+		)
+	} else {
+		log.Info(`new portal router`,
+			`method`, `WebSocket`,
+			`pattern`, router.Pattern,
+			`access`, router.Access,
+		)
+	}
+	upgrader := l.getUpgrader()
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		if accessToken != `` && !l.access(r, accessToken) {
+			log.Warn(`access not matched`)
+			w.Header().Set(`Content-Type`, `text/plain; charset=utf-8`)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`access not matched`))
+			return
+		}
+		ws, e := upgrader.Upgrade(w, r, nil)
+		if e != nil {
+			log.Warn(`upgrade websocket fail`,
+				`error`, e,
+			)
+			return
+		}
+		select {
+		case <-l.done:
+			ws.Close()
+		case <-listener.selfDone:
+			ws.Close()
+		case <-r.Context().Done():
+			ws.Close()
+		case listener.ch <- httpmux.NewWebsocketConn(ws):
+		}
+	}
+	return
+}
+
 func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router *config.Router) (handler http.HandlerFunc, e error) {
 	log := l.log
 	dialer, ok := dialers[router.Dialer.Tag]
@@ -306,6 +372,10 @@ func (l *HttpListener) getUpgrader() *websocket.Upgrader {
 }
 func (l *HttpListener) Close() (e error) {
 	if l.closed == 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
+		close(l.done)
+		for _, closer := range l.closer {
+			closer.Close()
+		}
 		e = l.listener.Close()
 	} else {
 		e = ErrClosed
