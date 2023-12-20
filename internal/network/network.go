@@ -51,10 +51,23 @@ func (n *Network) listenPipe(address string) (l net.Listener, e error) {
 		ele = next
 	}
 
-	l = pipe
+	l = &addrListener{
+		Listener: pipe,
+		addr:     NewAddr(`pipe`, address),
+	}
 	n.pipe[address] = pipe
 	return
 }
+
+type addrListener struct {
+	net.Listener
+	addr net.Addr
+}
+
+func (a *addrListener) Addr() net.Addr {
+	return a.addr
+}
+
 func (n *Network) Listen(network, address string) (l net.Listener, e error) {
 	switch network {
 	case `tcp`:
@@ -180,7 +193,7 @@ func (n *Network) NewPortal(log *slog.Logger, l net.Listener, portal *config.Por
 		reverse.WithDialerHeart(heart),
 	)
 	n.portal[tag] = dialer
-	log.Info(`new portal listener`,
+	log.Info(`new portal`,
 		`timeout`, timeout,
 		`heart`, heart,
 		`heartTimeout`, heartTimeout,

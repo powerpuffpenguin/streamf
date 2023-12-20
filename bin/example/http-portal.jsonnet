@@ -36,6 +36,21 @@ local portal = {
       // connect portal tag
       addr: 'listener-portal-ws',
     },
+    {
+      tag: 'portal-direct',
+      timeout: '200ms',
+      url: 'http://example.com/http/direct',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      method: 'POST',
+    },
+    {
+      tag: 'wss',
+      timeout: '200ms',
+      url: 'wss://example.com',
+      addr: 'localhost:2443',
+      allowInsecure: true,
+    },
   ],
   listener: [
     {
@@ -59,6 +74,11 @@ local portal = {
             heartTimeout: '1s',
           },
         },
+        {
+          method: 'POST',
+          pattern: '/http/direct',
+          dialer: { tag: 'wss' },
+        },
       ],
     },
     // This listener uses the connection provided by the 'listener portal' to provide services to the outside world.
@@ -70,9 +90,21 @@ local portal = {
         close: '1s',
       },
     },
+    {
+      network: 'tcp',
+      addr: ':4002',
+      dialer: {
+        tag: 'portal-direct',
+        close: '1s',
+      },
+    },
   ],
 };
 {
+  // logger: {
+  //   log: 'debug',
+  //   source: true,
+  // },
   dialer: bridge.dialer + portal.dialer,
   listener: portal.listener,
   bridge: bridge.bridge,
