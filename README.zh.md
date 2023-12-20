@@ -48,7 +48,7 @@ basic 是最基礎的轉發器，她就是網路上隨處可見 tcp 端口轉發
       // 明確指定連接地址
       network: 'tcp',
       addr: 'localhost:2443',
-      // 設置爲 true 則不驗證服務器證書
+      // 設置爲 true 則不驗證伺服器證書
       allowInsecure: true,
     },
   ],
@@ -246,7 +246,7 @@ curl --abstract-unix-socket streamf/unix.socket  https://example.com/ -k
 
 # pipe
 
-pipe 只能在同一進程中被使用，它直接在內存中模擬一個 net.Conn 因此效率非常高。它用於在進程內轉換流協議，例如 cloudflare 不支持顯示傳輸 http2協議，此時先將 http2 轉換爲 webscoekt 以經過 cloudflare 網路傳輸，在服務器上將 websocekt 轉爲 http2 給服務器 http2 服務。
+pipe 只能在同一進程中被使用，它直接在內存中模擬一個 net.Conn 因此效率非常高。它用於在進程內轉換流協議，例如 cloudflare 不支持顯示傳輸 http2協議，此時先將 http2 轉換爲 webscoekt 以經過 cloudflare 網路傳輸，在伺服器上將 websocekt 轉爲 http2 給伺服器 http2 服務。
 
 ```
 {
@@ -326,4 +326,81 @@ pool 爲連接設置讀寫緩存
 
 # portal-bridge
 
-有時我們需要將一個內網的服務映射到公網這是可以使用 portal-bridge 功能。
+有時我們需要將一個內網的服務映射到公網這時可以使用 portal-bridge 功能。
+
+首先需要在有公網的伺服器上將一個 listener 的 mode 設置爲 'portal' 同時保證其 tag 唯一。之後可以在 dialer 中通過將 network 設置爲 'portal', 將 addr 設置爲 listener 的 tag 來創建連接。最後在內網伺服器上設置 bridge 數組反向連接 listener
+
+```
+// 這裏爲了測試方便將 portal/bridge 設置到了一起。通常真實環境 'portal' 位於公網伺服器，'bridge' 位於內網伺服器
+local bridge = {
+  dialer: [
+    // 連接要發佈的服務
+    {
+      tag: 'tcp',
+      timeout: '200ms',
+      url: 'basic://example.com?addr=localhost:2000',
+    },
+  ],
+  // 'bridge' 會連接 'portal' 網路
+  bridge: [
+    {
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      // 提供 'bridge' 連接這個 dialer 到 'portal'
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
+  ],
+};
+// 這裏爲了測試方便將 portal/bridge 設置到了一起。通常真實環境 'portal' 位於公網伺服器，'bridge' 位於內網伺服器
+local portal = {
+  dialer: [
+    // 這個 dialer 獲取到 tag 爲 'listener portal' 提供的連接
+    {
+      tag: 'portal',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      // connect portal tag
+      addr: 'listener portal',
+    },
+  ],
+  listener: [
+    // 設置 mode 爲 'portal' 啓用 portal 網路
+    {
+      // 在 'portal' 模式下的監聽器必須保證 tag 唯一
+      tag: 'listener portal',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      mode: 'portal',
+      portal: {
+        // 連接超時時間
+        // Default 500ms
+        timeout: '200ms',
+        // 空閒連接每個多久發送一次心跳
+        heart: '40s',
+        // 等待心跳響應的超時時間
+        heartTimeout: '1s',
+      },
+    },
+    // 這個 listener 使用 'listener portal' 的連接提供服務
+    {
+      network: 'tcp',
+      addr: ':4000',
+      dialer: {
+        tag: 'portal',
+        close: '1s',
+      },
+    },
+  ],
+};
+{
+  dialer: bridge.dialer + portal.dialer,
+  listener: portal.listener,
+  bridge: bridge.bridge,
+}
+```

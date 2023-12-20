@@ -1,15 +1,15 @@
-// Here the portal/bridge are set together to facilitate testing. The real environment is to set the 'bridge' separately to the intranet server that needs to be mapped.
+// The portal/bridge are set together for the convenience of testing. Usually in the real environment, 'portal' is located on the public network server, and 'bridge' is located on the intranet server.
 local bridge = {
   dialer: [
-    // Services to map
+    // Connect to the service you want to publish
     {
       tag: 'tcp',
       timeout: '200ms',
       url: 'basic://example.com?addr=localhost:2000',
     },
   ],
+  // The 'bridge' will connect to the 'portal' network
   bridge: [
-    // This 'bridge' will connect the 'portal'
     {
       timeout: '200ms',
       url: 'basic://',
@@ -23,7 +23,7 @@ local bridge = {
     },
   ],
 };
-// Here the portal/bridge are set together to facilitate testing. The real environment is to set the 'portal' separately to a server with a public network IP.
+// The portal/bridge are set together for the convenience of testing. Usually in the real environment, 'portal' is located on the public network server, and 'bridge' is located on the intranet server.
 local portal = {
   dialer: [
     // This dialer will obtain the connection provided by the 'listener portal'
@@ -37,7 +37,7 @@ local portal = {
     },
   ],
   listener: [
-    // This listener uses 'portal' mode to receive connections from intranet mappings
+    // Set mode to 'portal' to enable portal networking
     {
       // Listeners in 'portal' mode must have a unique tag
       tag: 'listener portal',
