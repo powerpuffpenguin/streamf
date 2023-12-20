@@ -121,13 +121,13 @@ date=`date +'%Y-%m-%d %H:%M:%S'`
 if [[ "$debug" == 1 ]];then
     args=(
         go build 
-        -ldflags "\"-s -w -X 'github.com/powerpuffpenguin/sf/version.Version=$Version' -X 'github.com/powerpuffpenguin/sf/version.Date=$date' -X 'github.com/powerpuffpenguin/sf/version.Commit=$commit'\""
+        -ldflags "\"-s -w -X 'github.com/powerpuffpenguin/streamf/version.Version=$Version' -X 'github.com/powerpuffpenguin/streamf/version.Date=$date' -X 'github.com/powerpuffpenguin/streamf/version.Commit=$commit'\""
         -o "bin/$target"
     )
 else
     args=(
         go build 
-        -ldflags "\"-s -w -X 'github.com/powerpuffpenguin/sf/version.Version=$Version' -X 'github.com/powerpuffpenguin/sf/version.Date=$date' -X 'github.com/powerpuffpenguin/sf/version.Commit=$commit'\""
+        -ldflags "\"-s -w -X 'github.com/powerpuffpenguin/streamf/version.Version=$Version' -X 'github.com/powerpuffpenguin/streamf/version.Date=$date' -X 'github.com/powerpuffpenguin/streamf/version.Commit=$commit'\""
         -o "bin/$target"
     )
 fi
