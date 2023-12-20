@@ -13,6 +13,7 @@ index:
   * [unix](#unix)
   * [pipe](#pipe)
   * [portal-bridge](#portal-bridge)
+  * [http-portal-bridge](#http-portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
 
@@ -294,36 +295,6 @@ pipe can only be used in the same process. It simulates a net.Conn directly in m
 curl  http://127.0.0.1:4000/
 ```
 
-# logger
-
-logger is used to set logs
-
-```
-{
-  logger: {
-    // log level 'debug' 'info' 'warn' 'error'
-    level: 'info',
-    // Whether to display code files
-    source: false,
-  },
-}
-```
-
-# pool
-
-pool sets the read and write cache for the connection
-
-```
-{
-  pool: {
-    // Read and write cache size
-    size: 1024 * 32,
-    // How many free memory blocks can be cached at most?
-    cache: 128,
-  },
-}
-```
-
 # portal-bridge
 
 Sometimes we need to publish an intranet service to the public network. In this case, we can use the portal-bridge function.
@@ -402,5 +373,179 @@ local portal = {
   dialer: bridge.dialer + portal.dialer,
   listener: portal.listener,
   bridge: bridge.bridge,
+}
+```
+
+# http-portal-bridge
+
+portal/bridge can also support http, and the portal mode listener can be used in the router to mix portal and ordinary traffic forwarding.
+
+```
+local bridge = {
+  dialer: [
+    {
+      tag: 'tcp',
+      timeout: '200ms',
+      url: 'basic://example.com?addr=localhost:2000',
+    },
+  ],
+  bridge: [
+    // websocket connect portal
+    {
+      timeout: '200ms',
+      url: 'ws://example.com/http/ws',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      access: 'test access token',
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
+    // http2 post connect portal
+    {
+      timeout: '200ms',
+      url: 'http://example.com/http2',
+      method: 'POST',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      access: 'test access token',
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
+  ],
+};
+local portal = {
+  dialer: [
+    // serve by portal ws
+    {
+      tag: 'portal-ws',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      addr: 'listener-portal-ws',
+    },
+    // serve by portal http2
+    {
+      tag: 'portal-http2',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      addr: 'listener-portal-http2',
+    },
+    // serve direct
+    {
+      tag: 'portal-direct',
+      timeout: '200ms',
+      url: 'http://example.com/http/direct',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+    },
+  ],
+  listener: [
+    {
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      mode: 'http',
+      router: [
+        // websocket portal
+        {
+          method: 'WS',
+          pattern: '/http/ws',
+          access: 'test access token',
+          portal: {
+            tag: 'listener-portal-ws',
+            timeout: '200ms',
+            heart: '40s',
+            heartTimeout: '1s',
+          },
+        },
+        // http2 portal
+        {
+          method: 'POST',
+          pattern: '/http2',
+          access: 'test access token',
+          portal: {
+            tag: 'listener-portal-http2',
+            timeout: '200ms',
+            heart: '40s',
+            heartTimeout: '1s',
+          },
+        },
+        // direct router
+        {
+          pattern: '/http/direct',
+          dialer: {
+            tag: 'tcp',
+            close: '1s',
+          },
+        },
+      ],
+    },
+    // portal-ws ingress
+    {
+      network: 'tcp',
+      addr: ':4000',
+      dialer: {
+        tag: 'portal-ws',
+        close: '1s',
+      },
+    },
+    //  portal-http2 ingress
+    {
+      network: 'tcp',
+      addr: ':4001',
+      dialer: {
+        tag: 'portal-http2',
+        close: '1s',
+      },
+    },
+    //  portal-direct ingress
+    {
+      network: 'tcp',
+      addr: ':4002',
+      dialer: {
+        tag: 'portal-direct',
+        close: '1s',
+      },
+    },
+  ],
+};
+{
+  dialer: bridge.dialer + portal.dialer,
+  listener: portal.listener,
+  bridge: bridge.bridge,
+}
+```
+
+# logger
+
+logger is used to set logs
+
+```
+{
+  logger: {
+    // log level 'debug' 'info' 'warn' 'error'
+    level: 'info',
+    // Whether to display code files
+    source: false,
+  },
+}
+```
+
+# pool
+
+pool sets the read and write cache for the connection
+
+```
+{
+  pool: {
+    // Read and write cache size
+    size: 1024 * 32,
+    // How many free memory blocks can be cached at most?
+    cache: 128,
+  },
 }
 ```

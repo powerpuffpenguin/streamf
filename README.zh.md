@@ -13,6 +13,7 @@ index:
   * [unix](#unix)
   * [pipe](#pipe)
   * [portal-bridge](#portal-bridge)
+  * [http-portal-bridge](#http-portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
 
@@ -294,35 +295,6 @@ pipe 只能在同一進程中被使用，它直接在內存中模擬一個 net.C
 curl  http://127.0.0.1:4000/
 ```
 
-# logger
-
-logger 用於設定日誌
-
-```
-{
-  logger: {
-    // 日誌等級 'debug' 'info' 'warn' 'error'
-    level: 'info',
-    // 是否顯示代碼檔案
-    source: false,
-  },
-}
-```
-
-# pool
-
-pool 爲連接設置讀寫緩存
-
-```
-{
-  pool: {
-    // 讀寫緩存大小
-    size: 1024 * 32,
-    // 最多緩存多少個空閒的內存塊
-    cache: 128,
-  },
-}
-```
 
 # portal-bridge
 
@@ -402,5 +374,179 @@ local portal = {
   dialer: bridge.dialer + portal.dialer,
   listener: portal.listener,
   bridge: bridge.bridge,
+}
+```
+
+# http-portal-bridge
+
+portal/bridge 也可以支持 http，並且 portal 模式的 listener 可以在 router 中可以混用 portal 和 普通的流量轉發
+
+```
+local bridge = {
+  dialer: [
+    {
+      tag: 'tcp',
+      timeout: '200ms',
+      url: 'basic://example.com?addr=localhost:2000',
+    },
+  ],
+  bridge: [
+    // websocket connect portal
+    {
+      timeout: '200ms',
+      url: 'ws://example.com/http/ws',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      access: 'test access token',
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
+    // http2 post connect portal
+    {
+      timeout: '200ms',
+      url: 'http://example.com/http2',
+      method: 'POST',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      access: 'test access token',
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
+  ],
+};
+local portal = {
+  dialer: [
+    // serve by portal ws
+    {
+      tag: 'portal-ws',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      addr: 'listener-portal-ws',
+    },
+    // serve by portal http2
+    {
+      tag: 'portal-http2',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      addr: 'listener-portal-http2',
+    },
+    // serve direct
+    {
+      tag: 'portal-direct',
+      timeout: '200ms',
+      url: 'http://example.com/http/direct',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+    },
+  ],
+  listener: [
+    {
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      mode: 'http',
+      router: [
+        // websocket portal
+        {
+          method: 'WS',
+          pattern: '/http/ws',
+          access: 'test access token',
+          portal: {
+            tag: 'listener-portal-ws',
+            timeout: '200ms',
+            heart: '40s',
+            heartTimeout: '1s',
+          },
+        },
+        // http2 portal
+        {
+          method: 'POST',
+          pattern: '/http2',
+          access: 'test access token',
+          portal: {
+            tag: 'listener-portal-http2',
+            timeout: '200ms',
+            heart: '40s',
+            heartTimeout: '1s',
+          },
+        },
+        // direct router
+        {
+          pattern: '/http/direct',
+          dialer: {
+            tag: 'tcp',
+            close: '1s',
+          },
+        },
+      ],
+    },
+    // portal-ws ingress
+    {
+      network: 'tcp',
+      addr: ':4000',
+      dialer: {
+        tag: 'portal-ws',
+        close: '1s',
+      },
+    },
+    //  portal-http2 ingress
+    {
+      network: 'tcp',
+      addr: ':4001',
+      dialer: {
+        tag: 'portal-http2',
+        close: '1s',
+      },
+    },
+    //  portal-direct ingress
+    {
+      network: 'tcp',
+      addr: ':4002',
+      dialer: {
+        tag: 'portal-direct',
+        close: '1s',
+      },
+    },
+  ],
+};
+{
+  dialer: bridge.dialer + portal.dialer,
+  listener: portal.listener,
+  bridge: bridge.bridge,
+}
+```
+
+# logger
+
+logger 用於設定日誌
+
+```
+{
+  logger: {
+    // 日誌等級 'debug' 'info' 'warn' 'error'
+    level: 'info',
+    // 是否顯示代碼檔案
+    source: false,
+  },
+}
+```
+
+# pool
+
+pool 爲連接設置讀寫緩存
+
+```
+{
+  pool: {
+    // 讀寫緩存大小
+    size: 1024 * 32,
+    // 最多緩存多少個空閒的內存塊
+    cache: 128,
+  },
 }
 ```

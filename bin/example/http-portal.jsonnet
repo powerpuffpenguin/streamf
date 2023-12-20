@@ -1,27 +1,25 @@
-// The portal/bridge are set together for the convenience of testing. Usually in the real environment, 'portal' is located on the public network server, and 'bridge' is located on the intranet server.
 local bridge = {
   dialer: [
-    // Connect to the service you want to publish
     {
       tag: 'tcp',
       timeout: '200ms',
       url: 'basic://example.com?addr=localhost:2000',
     },
   ],
-  // The 'bridge' will connect to the 'portal' network
   bridge: [
+    // websocket connect portal
     {
       timeout: '200ms',
       url: 'ws://example.com/http/ws',
       network: 'pipe',
       addr: 'streamf/pipe.socket',
       access: 'test access token',
-      // Connect this dialer to the 'portal' through the 'bridge'
       dialer: {
         tag: 'tcp',
         close: '1s',
       },
     },
+    // http2 post connect portal
     {
       timeout: '200ms',
       url: 'http://example.com/http2',
@@ -36,39 +34,31 @@ local bridge = {
     },
   ],
 };
-// The portal/bridge are set together for the convenience of testing. Usually in the real environment, 'portal' is located on the public network server, and 'bridge' is located on the intranet server.
 local portal = {
   dialer: [
-    // This dialer will obtain the connection provided by the 'listener portal'
+    // serve by portal ws
     {
       tag: 'portal-ws',
       timeout: '200ms',
       url: 'basic://',
       network: 'portal',
-      // connect portal tag
       addr: 'listener-portal-ws',
     },
+    // serve by portal http2
     {
       tag: 'portal-http2',
       timeout: '200ms',
       url: 'basic://',
       network: 'portal',
-      // connect portal tag
       addr: 'listener-portal-http2',
     },
+    // serve direct
     {
       tag: 'portal-direct',
-      timeout: '2s',
+      timeout: '200ms',
       url: 'http://example.com/http/direct',
       network: 'pipe',
       addr: 'streamf/pipe.socket',
-    },
-    {
-      tag: 'wss',
-      timeout: '200ms',
-      url: 'wss://example.com',
-      addr: 'localhost:2443',
-      allowInsecure: true,
     },
   ],
   listener: [
@@ -77,38 +67,31 @@ local portal = {
       addr: 'streamf/pipe.socket',
       mode: 'http',
       router: [
+        // websocket portal
         {
           method: 'WS',
           pattern: '/http/ws',
           access: 'test access token',
-          // enable portal networking
           portal: {
             tag: 'listener-portal-ws',
-            // Wait connect timeout
-            // Default 500ms
             timeout: '200ms',
-            // How often does an idle connection send a heartbeat?
             heart: '40s',
-            // Timeout for waiting for heartbeat response
             heartTimeout: '1s',
           },
         },
+        // http2 portal
         {
           method: 'POST',
           pattern: '/http2',
           access: 'test access token',
-          // enable portal networking
           portal: {
             tag: 'listener-portal-http2',
-            // Wait connect timeout
-            // Default 500ms
             timeout: '200ms',
-            // How often does an idle connection send a heartbeat?
             heart: '40s',
-            // Timeout for waiting for heartbeat response
             heartTimeout: '1s',
           },
         },
+        // direct router
         {
           pattern: '/http/direct',
           dialer: {
@@ -118,7 +101,7 @@ local portal = {
         },
       ],
     },
-    // This listener uses the connection provided by the 'listener portal' to provide services to the outside world.
+    // portal-ws ingress
     {
       network: 'tcp',
       addr: ':4000',
@@ -127,6 +110,7 @@ local portal = {
         close: '1s',
       },
     },
+    //  portal-http2 ingress
     {
       network: 'tcp',
       addr: ':4001',
@@ -135,6 +119,7 @@ local portal = {
         close: '1s',
       },
     },
+    //  portal-direct ingress
     {
       network: 'tcp',
       addr: ':4002',
