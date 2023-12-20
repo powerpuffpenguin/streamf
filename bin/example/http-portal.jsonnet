@@ -22,6 +22,18 @@ local bridge = {
         close: '1s',
       },
     },
+    {
+      timeout: '200ms',
+      url: 'http://example.com/http2',
+      method: 'POST',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      access: 'test access token',
+      dialer: {
+        tag: 'tcp',
+        close: '1s',
+      },
+    },
   ],
 };
 // The portal/bridge are set together for the convenience of testing. Usually in the real environment, 'portal' is located on the public network server, and 'bridge' is located on the intranet server.
@@ -35,6 +47,14 @@ local portal = {
       network: 'portal',
       // connect portal tag
       addr: 'listener-portal-ws',
+    },
+    {
+      tag: 'portal-http2',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'portal',
+      // connect portal tag
+      addr: 'listener-portal-http2',
     },
     {
       tag: 'portal-direct',
@@ -74,8 +94,27 @@ local portal = {
           },
         },
         {
+          method: 'POST',
+          pattern: '/http2',
+          access: 'test access token',
+          // enable portal networking
+          portal: {
+            tag: 'listener-portal-http2',
+            // Wait connect timeout
+            // Default 500ms
+            timeout: '200ms',
+            // How often does an idle connection send a heartbeat?
+            heart: '40s',
+            // Timeout for waiting for heartbeat response
+            heartTimeout: '1s',
+          },
+        },
+        {
           pattern: '/http/direct',
-          dialer: { tag: 'tcp' },
+          dialer: {
+            tag: 'tcp',
+            close: '1s',
+          },
         },
       ],
     },
@@ -90,6 +129,14 @@ local portal = {
     },
     {
       network: 'tcp',
+      addr: ':4001',
+      dialer: {
+        tag: 'portal-http2',
+        close: '1s',
+      },
+    },
+    {
+      network: 'tcp',
       addr: ':4002',
       dialer: {
         tag: 'portal-direct',
@@ -99,10 +146,6 @@ local portal = {
   ],
 };
 {
-  // logger: {
-  //   log: 'debug',
-  //   source: true,
-  // },
   dialer: bridge.dialer + portal.dialer,
   listener: portal.listener,
   bridge: bridge.bridge,

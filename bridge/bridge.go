@@ -29,6 +29,10 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[str
 		return
 	}
 	switch u.Scheme {
+	case dialer.Http:
+		b, e = newHttpBridge(nk, log, pool, dialers, opts, u, false)
+	case dialer.HttpTls:
+		b, e = newHttpBridge(nk, log, pool, dialers, opts, u, true)
 	case dialer.Websocket:
 		b, e = newWebsocketBridge(nk, log, pool, dialers, opts, u, false)
 	case dialer.WebsocketTls:

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
-	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -15,8 +14,8 @@ import (
 	"time"
 
 	"github.com/powerpuffpenguin/streamf/config"
+	"github.com/powerpuffpenguin/streamf/internal/httpmux"
 	"github.com/powerpuffpenguin/streamf/internal/network"
-	"github.com/powerpuffpenguin/streamf/ioutil"
 	"golang.org/x/net/http2"
 )
 
@@ -185,7 +184,8 @@ func (d *HttpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 }
 func (d *HttpDialer) connect(ctx context.Context) (conn io.ReadWriteCloser, e error) {
 	for i := 0; ; i++ {
-		conn, e = d.connectHttp(ctx)
+		// conn, e = d.connectHttp(ctx)
+		conn, e = httpmux.ConnectHttp(ctx, d.client, d.method, d.remoteAddr.URL, d.header)
 		if e == nil || i >= d.retry {
 			break
 		}
@@ -196,57 +196,6 @@ func (d *HttpDialer) connect(ctx context.Context) (conn io.ReadWriteCloser, e er
 			return
 		default:
 		}
-	}
-	return
-}
-func (d *HttpDialer) connectHttp(ctx context.Context) (conn io.ReadWriteCloser, e error) {
-	r, w := io.Pipe()
-	req, e := http.NewRequest(d.method, d.remoteAddr.URL, r)
-	if e != nil {
-		w.Close()
-		return
-	}
-	req.Header = d.header
-	resp, e := d.client.Do(req)
-	if e != nil {
-		w.Close()
-		return
-	} else if resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusAccepted {
-		defer w.Close()
-		var b []byte
-		if resp.Body != nil {
-			b, _ = io.ReadAll(io.LimitReader(resp.Body, 1024))
-			resp.Body.Close()
-		}
-		if len(b) == 0 {
-			e = errors.New(resp.Status)
-		} else {
-			e = errors.New(resp.Status + ` ` + string(b))
-		}
-		return
-	} else if resp.Body == nil {
-		e = errors.New(`http body nil`)
-		return
-	}
-	conn = ioutil.NewReadWriter(resp.Body, w, &httpCloser{
-		w: w,
-		r: r,
-	})
-	return
-}
-
-type httpCloser struct {
-	w      *io.PipeWriter
-	r      io.ReadCloser
-	closed uint32
-}
-
-func (c *httpCloser) Close() (e error) {
-	if c.closed == 0 && atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
-		c.w.Close()
-		c.r.Close()
-	} else {
-		e = errClosed
 	}
 	return
 }

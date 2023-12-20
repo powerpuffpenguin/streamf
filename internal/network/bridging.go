@@ -13,6 +13,11 @@ type websocketConn interface {
 	Websocket() *websocket.Conn
 }
 
+func Copy(dst io.Writer, src io.Reader, pool *pool.Pool) {
+	var b = pool.Get()
+	copyBuffer(dst, src, b)
+	pool.Put(b)
+}
 func Bridging(c0, c1 io.ReadWriteCloser, pool *pool.Pool, duration time.Duration) {
 	defer c0.Close()
 	defer c1.Close()

@@ -8,14 +8,15 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/powerpuffpenguin/streamf/config"
 	"github.com/powerpuffpenguin/streamf/dialer"
 	"github.com/powerpuffpenguin/streamf/internal/httpmux"
+	"github.com/powerpuffpenguin/streamf/internal/ioutil"
 	"github.com/powerpuffpenguin/streamf/internal/network"
-	"github.com/powerpuffpenguin/streamf/ioutil"
 	"github.com/powerpuffpenguin/streamf/pool"
 	"github.com/powerpuffpenguin/streamf/third-party/websocket"
 	"golang.org/x/net/http2"
@@ -79,21 +80,33 @@ func NewHttpListener(nk *network.Network,
 	for _, router := range routers {
 		switch strings.ToUpper(router.Method) {
 		case ``, http.MethodPost:
-			handler, e = listener.createHttp2(dialers, router)
+			if router.Portal.Tag == `` {
+				handler, e = listener.createHttp2(dialers, router)
+			} else {
+				handler, e = listener.createHttp2Portal(nk, router)
+			}
 			if e != nil {
 				listener.Close()
 				return
 			}
 			mux.Post(router.Pattern, handler)
 		case http.MethodPut:
-			handler, e = listener.createHttp2(dialers, router)
+			if router.Portal.Tag == `` {
+				handler, e = listener.createHttp2(dialers, router)
+			} else {
+				handler, e = listener.createHttp2Portal(nk, router)
+			}
 			if e != nil {
 				listener.Close()
 				return
 			}
 			mux.Put(router.Pattern, handler)
 		case http.MethodPatch:
-			handler, e = listener.createHttp2(dialers, router)
+			if router.Portal.Tag == `` {
+				handler, e = listener.createHttp2(dialers, router)
+			} else {
+				handler, e = listener.createHttp2Portal(nk, router)
+			}
 			if e != nil {
 				listener.Close()
 				return
@@ -227,6 +240,127 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 	}
 	return
 }
+func (l *HttpListener) createHttp2Portal(nk *network.Network, router *config.Router) (handler http.HandlerFunc, e error) {
+	log := l.log.With(`portal`, router.Portal.Tag)
+	var accessToken string
+	if router.Access != `` {
+		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
+	}
+	log = log.With(`method`, router.Method)
+	listener := newHttpListener(l.done,
+		network.NewAddr(`portal`, router.Portal.Tag),
+	)
+	dialer, e := nk.NewPortal(log, listener, &router.Portal)
+	if e != nil {
+		log.Error(`new portal listener fail`, `error`, e)
+		return
+	}
+	go dialer.Serve()
+	l.closer = append(l.closer, dialer)
+	if router.Access == `` {
+		log.Info(`new portal router`,
+			`pattern`, router.Pattern,
+		)
+	} else {
+		log.Info(`new portal router`,
+			`pattern`, router.Pattern,
+			`access`, router.Access,
+		)
+	}
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		if accessToken != `` && !l.access(r, accessToken) {
+			log.Warn(`access not matched`)
+			w.Header().Set(`Content-Type`, `text/plain; charset=utf-8`)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`access not matched`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		f, ok := w.(http.Flusher)
+		if ok {
+			f.Flush()
+		}
+		wc := newHttp2PortalWriter(w, f, r.Body)
+		conn := ioutil.NewReadWriter(r.Body, wc, wc)
+		select {
+		case <-l.done:
+			conn.Close()
+			return
+		case <-listener.selfDone:
+			conn.Close()
+			return
+		case <-r.Context().Done():
+			conn.Close()
+			return
+		case listener.ch <- conn:
+			wc.Wait()
+		}
+	}
+	return
+}
+
+type http2PortalWriter struct {
+	w      io.Writer
+	closer io.Closer
+	e      error
+	sync.Mutex
+	f    http.Flusher
+	done chan struct{}
+}
+
+func newHttp2PortalWriter(w io.Writer, f http.Flusher, closer io.Closer) *http2PortalWriter {
+	return &http2PortalWriter{
+		w:      w,
+		f:      f,
+		closer: closer,
+		done:   make(chan struct{}),
+	}
+}
+func (w *http2PortalWriter) Wait() {
+	<-w.done
+}
+func (w *http2PortalWriter) Flush() {
+	if w.f != nil {
+		w.Lock()
+		defer w.Unlock()
+		w.f.Flush()
+	}
+}
+func (w *http2PortalWriter) Close() (e error) {
+	w.Lock()
+	defer w.Unlock()
+	if w.e != nil {
+		e = w.e
+		return
+	}
+	w.e = ErrClosed
+	w.closer.Close()
+	close(w.done)
+	return
+}
+func (w *http2PortalWriter) Write(b []byte) (n int, e error) {
+	w.Lock()
+	defer w.Unlock()
+	if w.e != nil {
+		e = w.e
+		return
+	}
+	n = len(b)
+	if n == 0 {
+		return
+	}
+	n, e = w.w.Write(b)
+	if n != 0 && w.f != nil {
+		w.f.Flush()
+	}
+	if e != nil {
+		w.closer.Close()
+		w.e = e
+		close(w.done)
+	}
+	return
+}
+
 func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config.Router) (handler http.HandlerFunc, e error) {
 	log := l.log.With(`portal`, router.Portal.Tag)
 	var accessToken string

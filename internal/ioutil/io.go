@@ -2,10 +2,41 @@ package ioutil
 
 import (
 	"io"
+	"net"
 	"net/http"
+	"time"
 )
 
-func NewReadWriter(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteCloser {
+type unknowAddr struct {
+}
+
+func (u unknowAddr) Network() string {
+	return `unknow`
+}
+func (u unknowAddr) String() string {
+	return `unknow`
+}
+
+type conn struct {
+}
+
+func (conn) LocalAddr() net.Addr {
+	return unknowAddr{}
+}
+func (conn) RemoteAddr() net.Addr {
+	return unknowAddr{}
+}
+func (conn) SetDeadline(t time.Time) error {
+	return nil
+}
+func (conn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+func (conn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
+func NewReadWriter(r io.Reader, w io.Writer, c io.Closer) net.Conn {
 	f, ok := w.(http.Flusher)
 	if ok {
 		if rt, ok := w.(io.ReaderFrom); ok {
@@ -40,6 +71,7 @@ func NewReadWriter(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteCloser {
 }
 
 type rwfReaderFrom struct {
+	conn
 	io.Reader
 	w  io.Writer
 	f  http.Flusher
@@ -62,6 +94,7 @@ func (rw *rwfReaderFrom) Close() error {
 }
 
 type rwf struct {
+	conn
 	io.Reader
 	w io.Writer
 	f http.Flusher
@@ -81,6 +114,7 @@ func (rw *rwf) Close() error {
 }
 
 type rwReaderFrom struct {
+	conn
 	io.Reader
 	w  io.Writer
 	rt io.ReaderFrom
@@ -99,6 +133,7 @@ func (rw *rwReaderFrom) Close() error {
 }
 
 type rw struct {
+	conn
 	io.Reader
 	io.Writer
 	c io.Closer
