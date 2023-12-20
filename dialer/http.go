@@ -117,8 +117,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 			Transport: &http2.Transport{
 				AllowHTTP: !secure,
 				DialTLSContext: func(ctx context.Context, _, _ string, cfg *tls.Config) (net.Conn, error) {
-					c, e := rawDialer.DialContext(ctx)
-					return c, e
+					return rawDialer.DialContext(ctx)
 				},
 			},
 		},

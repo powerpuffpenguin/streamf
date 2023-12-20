@@ -38,11 +38,10 @@ local portal = {
     },
     {
       tag: 'portal-direct',
-      timeout: '200ms',
+      timeout: '2s',
       url: 'http://example.com/http/direct',
       network: 'pipe',
       addr: 'streamf/pipe.socket',
-      method: 'POST',
     },
     {
       tag: 'wss',
@@ -75,9 +74,8 @@ local portal = {
           },
         },
         {
-          method: 'POST',
           pattern: '/http/direct',
-          dialer: { tag: 'wss' },
+          dialer: { tag: 'tcp' },
         },
       ],
     },

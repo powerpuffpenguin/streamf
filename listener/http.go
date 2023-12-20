@@ -220,6 +220,9 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 			`url`, addr.URL,
 		)
 		w.WriteHeader(http.StatusOK)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
 		network.Bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
 	return

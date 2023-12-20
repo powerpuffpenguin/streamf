@@ -140,26 +140,19 @@ func forwardingDone(done chan<- bool) {
 }
 func forwarding(w io.WriteCloser, r io.ReadCloser, done chan<- bool, pool *pool.Pool) {
 	defer forwardingDone(done)
-	// var (
-	// 	b      = make([]byte, 32*1024)
-	// 	n      int
-	// 	er, ew error
-	// )
-	// for er == nil && ew == nil {
-	// 	n, er = r.Read(b)
-	// 	if n > 0 {
-	// 		_, ew = w.Write(b[:n])
-	// 	}
+	var b = pool.Get()
+	copyBuffer(w, r, b)
+	pool.Put(b)
+	// if rt, ok := w.(io.ReaderFrom); ok {
+	// 	rt.ReadFrom(r)
+	// } else if wt, ok := r.(io.WriterTo); ok {
+	// 	wt.WriteTo(w)
+	// } else {
+	// 	var b = pool.Get()
+	// 	copyBuffer(w, r, b)
+	// 	pool.Put(b)
 	// }
-	if rt, ok := w.(io.ReaderFrom); ok {
-		rt.ReadFrom(r)
-	} else if wt, ok := r.(io.WriterTo); ok {
-		wt.WriteTo(w)
-	} else {
-		var b = pool.Get()
-		copyBuffer(w, r, b)
-		pool.Put(b)
-	}
+
 }
 
 // errInvalidWrite means that a write returned an impossible count.
