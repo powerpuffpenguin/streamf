@@ -26,6 +26,9 @@ type Dialer struct {
 	Method string `json:"method"`
 	// Optional credentials, only valid for http protocol
 	Access string `jsong:"access"`
+
+	// ping http default '40s'
+	Ping string `json:"ping"`
 }
 type Bridge struct {
 	Tag string `json:"tag"`
@@ -49,4 +52,7 @@ type Bridge struct {
 	Access string `jsong:"access"`
 	// Specify forwarding destination in "basic" mode
 	Dialer ConnectDialer `json:"dialer"`
+
+	// ping http default '40s'
+	Ping string `json:"ping"`
 }

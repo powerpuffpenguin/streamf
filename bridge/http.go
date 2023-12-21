@@ -71,9 +71,26 @@ func newHttpBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, diale
 			`Authorization`: []string{access},
 		}
 	}
+	var ping time.Duration
+	if opts.Ping == `` {
+		ping = time.Second * 40
+	} else {
+		var err error
+		ping, err = time.ParseDuration(opts.Ping)
+		if err != nil {
+			ping = time.Second * 40
+			log.Warn(`parse duration fail, used default ping duration.`,
+				`error`, err,
+				`ping`, ping,
+			)
+		} else if ping < time.Second {
+			ping = 0
+		}
+	}
 	client := &http.Client{
 		Transport: &http2.Transport{
-			AllowHTTP: !secure,
+			ReadIdleTimeout: ping,
+			AllowHTTP:       !secure,
 			DialTLSContext: func(ctx context.Context, _, _ string, cfg *tls.Config) (net.Conn, error) {
 				return rawDialer.DialContext(ctx)
 			},
