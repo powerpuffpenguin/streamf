@@ -111,7 +111,8 @@ func (b *bridge) Serve() (e error) {
 				time.Sleep(tempDelay)
 				continue
 			}
-			return err
+			// return err
+			continue
 		}
 		go b.serve(rw)
 	}
