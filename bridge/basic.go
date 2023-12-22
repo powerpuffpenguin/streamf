@@ -99,6 +99,7 @@ func newBasicBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, dial
 	bridge = newBridge(log, l, rawDialer,
 		pool,
 		found, closeDuration,
+		tag, network, addr, opts.URL,
 	)
 	return
 }

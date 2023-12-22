@@ -19,6 +19,7 @@ import (
 type Bridge interface {
 	Close() (e error)
 	Serve() (e error)
+	Info() any
 }
 
 func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Bridge) (b Bridge, e error) {
@@ -48,6 +49,8 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[str
 }
 
 type bridge struct {
+	tag, network, addr, url string
+
 	done     chan struct{}
 	closed   uint32
 	log      *slog.Logger
@@ -62,6 +65,7 @@ type bridge struct {
 func newBridge(log *slog.Logger, l *reverse.Listener, closer io.Closer,
 	pool *pool.Pool,
 	dialer dialer.Dialer, closeDuration time.Duration,
+	tag, network, addr, url string,
 ) *bridge {
 	return &bridge{
 		done:     make(chan struct{}),
@@ -72,6 +76,22 @@ func newBridge(log *slog.Logger, l *reverse.Listener, closer io.Closer,
 		pool:          pool,
 		dialer:        dialer,
 		closeDuration: closeDuration,
+
+		tag:     tag,
+		network: network,
+		addr:    addr,
+		url:     url,
+	}
+}
+func (b *bridge) Info() any {
+	return map[string]any{
+		`tag`:     b.tag,
+		`network`: b.network,
+		`addr`:    b.addr,
+		`url`:     b.url,
+
+		`close`:  b.closeDuration.String(),
+		`dialer`: b.dialer.Tag(),
 	}
 }
 func (b *bridge) Close() (e error) {

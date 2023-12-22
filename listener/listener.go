@@ -6,6 +6,7 @@ import (
 
 	"github.com/powerpuffpenguin/streamf/config"
 	"github.com/powerpuffpenguin/streamf/dialer"
+	"github.com/powerpuffpenguin/streamf/internal/httpmux"
 	"github.com/powerpuffpenguin/streamf/internal/network"
 	"github.com/powerpuffpenguin/streamf/pool"
 )
@@ -21,7 +22,11 @@ const (
 	Portal = `portal`
 )
 
-func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Listener) (l Listener, e error) {
+func New(nk *network.Network, log *slog.Logger,
+	pool *pool.Pool, dialers map[string]dialer.Dialer,
+	api []httpmux.ApiHandler,
+	opts *config.Listener,
+) (l Listener, e error) {
 	switch opts.Mode {
 	case Basic, "":
 		if found, ok := dialers[opts.Dialer.Tag]; ok {
@@ -31,7 +36,7 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[str
 			log.Error(`dialer not found`, `dialer`, opts.Dialer.Tag)
 		}
 	case Http:
-		l, e = NewHttpListener(nk, log, pool, dialers, &opts.BasicListener, opts.Router)
+		l, e = NewHttpListener(nk, log, pool, dialers, api, &opts.BasicListener, opts.Router)
 	case Portal:
 		l, e = NewPortalListener(nk, log, &opts.BasicListener, &opts.Portal)
 	default:

@@ -24,7 +24,7 @@ func main() {
 	flag.BoolVar(&help, "help", false, "Show help")
 	flag.Parse()
 	if version {
-		fmt.Printf(`sf-%s
+		fmt.Printf(`streamf-%s
 %s/%s, %s, %s, %s
 `,
 			ver.Version,

@@ -16,6 +16,7 @@ import (
 type Application struct {
 	bridges   []bridge.Bridge
 	listeners []listener.Listener
+	dialers   map[string]dialer.Dialer
 	log       *slog.Logger
 }
 
@@ -36,6 +37,10 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		pool      = pool.New(&conf.Pool)
 		nk        = network.New()
 	)
+	app = &Application{
+		log: log,
+	}
+	api := app.api()
 	for _, opts := range conf.Dialer {
 		tag = opts.Tag
 		if _, exists = dialers[tag]; exists {
@@ -66,7 +71,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		bridges = append(bridges, b)
 	}
 	for _, opts := range conf.Listener {
-		l, e = listener.New(nk, log, pool, dialers, opts)
+		l, e = listener.New(nk, log, pool, dialers, api, opts)
 		if e != nil {
 			for _, b := range bridges {
 				b.Close()
@@ -81,11 +86,9 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		}
 		listeners = append(listeners, l)
 	}
-	app = &Application{
-		bridges:   bridges,
-		listeners: listeners,
-		log:       log,
-	}
+	app.dialers = dialers
+	app.bridges = bridges
+	app.listeners = listeners
 	return
 }
 func (a *Application) Serve() {

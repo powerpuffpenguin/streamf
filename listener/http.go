@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -39,6 +40,7 @@ type HttpListener struct {
 func NewHttpListener(nk *network.Network,
 	log *slog.Logger, pool *pool.Pool,
 	dialers map[string]dialer.Dialer,
+	api []httpmux.ApiHandler,
 	opts *config.BasicListener, routers []*config.Router,
 ) (listener *HttpListener, e error) {
 	var (
@@ -126,6 +128,45 @@ func NewHttpListener(nk *network.Network,
 				return
 			}
 			mux.Get(router.Pattern, handler)
+		case `API`:
+			for _, item := range api {
+				pattern := path.Join(router.Pattern, item.Path)
+				for _, method := range item.Method {
+					switch method {
+					case http.MethodGet:
+						mux.Get(pattern, item.Handler)
+						mux.Head(pattern, item.Handler)
+						log.Info(`new api router`,
+							`method`, method,
+							`pattern`, pattern,
+						)
+					case http.MethodPost:
+						mux.Post(pattern, item.Handler)
+						log.Info(`new api router`,
+							`method`, method,
+							`pattern`, pattern,
+						)
+					case http.MethodPut:
+						mux.Put(pattern, item.Handler)
+						log.Info(`new api router`,
+							`method`, method,
+							`pattern`, pattern,
+						)
+					case http.MethodPatch:
+						mux.Patch(pattern, item.Handler)
+						log.Info(`new api router`,
+							`method`, method,
+							`pattern`, pattern,
+						)
+					case http.MethodDelete:
+						mux.Delete(pattern, item.Handler)
+						log.Info(`new api router`,
+							`method`, method,
+							`pattern`, pattern,
+						)
+					}
+				}
+			}
 		default:
 			listener.Close()
 			e = errHttpMethod

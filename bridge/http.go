@@ -135,6 +135,7 @@ func newHttpBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, diale
 	bridge = newBridge(log, l, rawDialer,
 		pool,
 		found, closeDuration,
+		tag, network, addr, opts.URL,
 	)
 	return
 }
