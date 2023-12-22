@@ -164,7 +164,7 @@ func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		conn, e = result.Conn, result.Error
 	}
 	if e == nil {
-		d.log.Debug(`websocket connect success`, `error`, e)
+		d.log.Debug(`websocket connect success`)
 	} else {
 		d.log.Debug(`websocket connect fail`, `error`, e)
 	}

@@ -151,7 +151,7 @@ func (d *BasicDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		conn, e = result.Conn, result.Error
 	}
 	if e == nil {
-		d.log.Debug(`basic connect success`, `error`, e)
+		d.log.Debug(`basic connect success`)
 	} else {
 		d.log.Debug(`basic connect fail`, `error`, e)
 	}

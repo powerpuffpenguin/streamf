@@ -201,7 +201,7 @@ func (d *HttpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		conn, e = result.Conn, result.Error
 	}
 	if e == nil {
-		d.log.Debug(`http connect success`, `error`, e)
+		d.log.Debug(`http connect success`)
 	} else {
 		d.log.Debug(`http connect fail`, `error`, e)
 	}

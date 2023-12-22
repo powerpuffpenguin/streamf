@@ -98,23 +98,21 @@ func (l *BasicListener) Serve() error {
 			if l.closed != 0 && atomic.LoadUint32(&l.closed) != 0 {
 				return ErrClosed
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				if tempDelay == 0 {
-					tempDelay = 5 * time.Millisecond
-				} else {
-					tempDelay *= 2
-				}
-				if max := 1 * time.Second; tempDelay > max {
-					tempDelay = max
-				}
-				l.log.Warn(`basic accept fail`,
-					`error`, err,
-					`retrying`, tempDelay,
-				)
-				time.Sleep(tempDelay)
-				continue
+
+			if tempDelay == 0 {
+				tempDelay = 5 * time.Millisecond
+			} else {
+				tempDelay *= 2
 			}
-			return err
+			if max := 1 * time.Second; tempDelay > max {
+				tempDelay = max
+			}
+			l.log.Warn(`basic accept fail`,
+				`error`, err,
+				`retrying`, tempDelay,
+			)
+			time.Sleep(tempDelay)
+			continue
 		}
 		go l.serve(rw)
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/url"
 	"sync/atomic"
 	"time"
@@ -95,23 +94,20 @@ func (b *bridge) Serve() (e error) {
 			if b.closed != 0 && atomic.LoadUint32(&b.closed) != 0 {
 				return ErrClosed
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				if tempDelay == 0 {
-					tempDelay = 5 * time.Millisecond
-				} else {
-					tempDelay *= 2
-				}
-				if max := 1 * time.Second; tempDelay > max {
-					tempDelay = max
-				}
-				b.log.Warn(`accept fail`,
-					`error`, err,
-					`retrying`, tempDelay,
-				)
-				time.Sleep(tempDelay)
-				continue
+
+			if tempDelay == 0 {
+				tempDelay = 5 * time.Millisecond
+			} else {
+				tempDelay *= 2
 			}
-			// return err
+			if max := 1 * time.Second; tempDelay > max {
+				tempDelay = max
+			}
+			b.log.Warn(`accept fail`,
+				`error`, err,
+				`retrying`, tempDelay,
+			)
+			time.Sleep(tempDelay)
 			continue
 		}
 		go b.serve(rw)
