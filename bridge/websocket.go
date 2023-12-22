@@ -88,7 +88,7 @@ func newWebsocketBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, 
 			)
 		}
 	}
-	log.Info(`new bridge`,
+	log.Info(`new websocket bridge`,
 		`network`, network,
 		`addr`, addr,
 		`url`, opts.URL,

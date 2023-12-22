@@ -120,7 +120,7 @@ func newHttpBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, diale
 			)
 		}
 	}
-	log.Info(`new bridge`,
+	log.Info(`new http bridge`,
 		`network`, network,
 		`addr`, addr,
 		`url`, opts.URL,

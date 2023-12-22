@@ -85,7 +85,7 @@ func newBasicBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, dial
 			)
 		}
 	}
-	log.Info(`new bridge`,
+	log.Info(`new basic bridge`,
 		`network`, network,
 		`addr`, addr,
 		`url`, opts.URL,

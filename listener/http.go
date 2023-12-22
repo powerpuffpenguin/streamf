@@ -64,7 +64,10 @@ func NewHttpListener(nk *network.Network,
 	}
 	log = log.With(`listener`, tag)
 
-	log.Info(`new http listener`)
+	log.Info(`new http listener`,
+		`network`, addr.Network(),
+		`addr`, addr.String(),
+	)
 	listener = &HttpListener{
 		done:     make(chan struct{}),
 		certFile: opts.TLS.CertFile,
