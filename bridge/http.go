@@ -59,6 +59,15 @@ func newHttpBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, diale
 			InsecureSkipVerify: opts.AllowInsecure,
 		}
 	}
+	tag := opts.Tag
+	if tag == `` {
+		if secure {
+			tag = `ws ` + network + `+tls://` + addr
+		} else {
+			tag = `ws ` + network + `://` + addr
+		}
+	}
+	log = log.With(`bridge`, tag, `dialer`, opts.Dialer.Tag)
 	rawDialer, e := nk.Dialer(network, addr, cfg)
 	if e != nil {
 		log.Error(`new dialer fail`, `error`, e)

@@ -25,7 +25,7 @@ func (w *WebsocketConn) Close() error {
 }
 func (w *WebsocketConn) Write(b []byte) (n int, e error) {
 	e = w.ws.WriteMessage(websocket.BinaryMessage, b)
-	if e != nil {
+	if e == nil {
 		n = len(b)
 	}
 	return
