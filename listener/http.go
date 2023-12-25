@@ -35,8 +35,20 @@ type HttpListener struct {
 	upgrader          *websocket.Upgrader
 
 	closer []io.Closer
+
+	tag, network, addr string
+	secure             bool
 }
 
+func (l *HttpListener) Info() any {
+	return map[string]any{
+		`tag`:     l.tag,
+		`network`: l.network,
+		`addr`:    l.addr,
+		`secure`:  l.secure,
+		`portal`:  true,
+	}
+}
 func NewHttpListener(nk *network.Network,
 	log *slog.Logger, pool *pool.Pool,
 	dialers map[string]dialer.Dialer,
@@ -77,6 +89,11 @@ func NewHttpListener(nk *network.Network,
 		listener: l,
 		pool:     pool,
 		log:      log,
+
+		tag:     tag,
+		network: addr.Network(),
+		addr:    addr.String(),
+		secure:  secure,
 	}
 	var (
 		mux     = httpmux.New(log)

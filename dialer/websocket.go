@@ -109,14 +109,25 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 	}
 	return
 }
+func (d *WebsocketDialer) Info() any {
+	return map[string]any{
+		`tag`:     d.remoteAddr.Dialer,
+		`network`: d.remoteAddr.Network,
+		`addr`:    d.remoteAddr.Addr,
+		`url`:     d.remoteAddr.URL,
+		`secure`:  d.remoteAddr.Secure,
 
-func (t *WebsocketDialer) Tag() string {
-	return t.remoteAddr.Dialer
+		`close`: d.timeout.String(),
+		`retry`: d.retry,
+	}
 }
-func (t *WebsocketDialer) Close() (e error) {
-	if t.closed == 0 && atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
-		close(t.done)
-		e = t.rawDialer.Close()
+func (d *WebsocketDialer) Tag() string {
+	return d.remoteAddr.Dialer
+}
+func (d *WebsocketDialer) Close() (e error) {
+	if d.closed == 0 && atomic.CompareAndSwapUint32(&d.closed, 0, 1) {
+		close(d.done)
+		e = d.rawDialer.Close()
 	} else {
 		e = ErrClosed
 	}

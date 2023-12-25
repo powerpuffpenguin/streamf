@@ -12,9 +12,11 @@ import (
 )
 
 type PortalListener struct {
-	dialer *reverse.Dialer
-	closed uint32
-	log    *slog.Logger
+	dialer             *reverse.Dialer
+	closed             uint32
+	log                *slog.Logger
+	tag, network, addr string
+	secure             bool
 }
 
 func NewPortalListener(nk *network.Network,
@@ -65,10 +67,14 @@ func NewPortalListener(nk *network.Network,
 	listener = &PortalListener{
 		dialer: dialer,
 		log:    log,
+
+		tag:     tag,
+		network: addr.Network(),
+		addr:    addr.String(),
+		secure:  secure,
 	}
 	return
 }
-
 func (l *PortalListener) Close() (e error) {
 	if l.closed == 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {
 		e = l.dialer.Close()
@@ -80,4 +86,13 @@ func (l *PortalListener) Close() (e error) {
 
 func (l *PortalListener) Serve() error {
 	return l.dialer.Serve()
+}
+func (l *PortalListener) Info() any {
+	return map[string]any{
+		`tag`:     l.tag,
+		`network`: l.network,
+		`addr`:    l.addr,
+		`secure`:  l.secure,
+		`portal`:  true,
+	}
 }

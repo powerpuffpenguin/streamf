@@ -98,6 +98,18 @@ func newBasicDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, 
 	}
 	return
 }
+func (d *BasicDialer) Info() any {
+	return map[string]any{
+		`tag`:     d.remoteAddr.Dialer,
+		`network`: d.remoteAddr.Network,
+		`addr`:    d.remoteAddr.Addr,
+		`url`:     d.remoteAddr.URL,
+		`secure`:  d.remoteAddr.Secure,
+
+		`close`: d.timeout.String(),
+		`retry`: d.retry,
+	}
+}
 func (d *BasicDialer) Tag() string {
 	return d.remoteAddr.Dialer
 }

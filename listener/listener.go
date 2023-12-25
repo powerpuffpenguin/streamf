@@ -14,6 +14,7 @@ import (
 type Listener interface {
 	Close() (e error)
 	Serve() (e error)
+	Info() any
 }
 
 const (

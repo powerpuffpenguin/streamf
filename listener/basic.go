@@ -21,6 +21,9 @@ type BasicListener struct {
 	log      *slog.Logger
 	closed   uint32
 	duration time.Duration
+
+	tag, network, addr string
+	secure             bool
 }
 
 func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialer dialer.Dialer, connect *config.ConnectDialer, opts *config.BasicListener) (listener *BasicListener, e error) {
@@ -79,8 +82,23 @@ func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, di
 		pool:     pool,
 		log:      log,
 		duration: duration,
+
+		tag:     tag,
+		network: addr.Network(),
+		addr:    addr.String(),
+		secure:  secure,
 	}
 	return
+}
+func (l *BasicListener) Info() any {
+	return map[string]any{
+		`tag`:     l.tag,
+		`network`: l.network,
+		`addr`:    l.addr,
+		`secure`:  l.secure,
+		`dialer`:  l.dialer.Tag(),
+		`portal`:  false,
+	}
 }
 func (l *BasicListener) Close() (e error) {
 	if l.closed == 0 && atomic.CompareAndSwapUint32(&l.closed, 0, 1) {

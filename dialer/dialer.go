@@ -25,6 +25,7 @@ type Dialer interface {
 	Tag() string
 	Connect(ctx context.Context) (conn *Conn, e error)
 	Close() (e error)
+	Info() any
 }
 
 func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, opts *config.Dialer) (dialer Dialer, e error) {

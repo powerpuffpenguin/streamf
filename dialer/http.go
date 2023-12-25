@@ -146,7 +146,18 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 	}
 	return
 }
+func (d *HttpDialer) Info() any {
+	return map[string]any{
+		`tag`:     d.remoteAddr.Dialer,
+		`network`: d.remoteAddr.Network,
+		`addr`:    d.remoteAddr.Addr,
+		`url`:     d.remoteAddr.URL,
+		`secure`:  d.remoteAddr.Secure,
 
+		`close`: d.timeout.String(),
+		`retry`: d.retry,
+	}
+}
 func (d *HttpDialer) Tag() string {
 	return d.remoteAddr.Dialer
 }

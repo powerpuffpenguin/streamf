@@ -45,22 +45,51 @@ func (a *Application) api() []httpmux.ApiHandler {
 	}
 }
 func (a *Application) apiApplication(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(`Content-Type`, `text/plain; charset=utf-8`)
-	w.Write([]byte(`/apiApplication`))
+	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
+	m := make(map[string]any)
+	items := make([]any, 0, len(a.listeners))
+	for _, item := range a.listeners {
+		items = append(items, item.Info())
+	}
+	m[`listeners`] = items
+
+	items = make([]any, 0, len(a.dialers))
+	for _, item := range a.dialers {
+		items = append(items, item.Info())
+	}
+	m[`dialers`] = items
+
+	items = make([]any, 0, len(a.bridges))
+	for _, item := range a.bridges {
+		items = append(items, item.Info())
+	}
+	m[`bridges`] = items
+
+	json.NewEncoder(w).Encode(m)
 }
 func (a *Application) apiListener(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`/apiListener`))
+	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
+	items := make([]any, 0, len(a.listeners))
+	for _, item := range a.listeners {
+		items = append(items, item.Info())
+	}
+	json.NewEncoder(w).Encode(items)
 }
 func (a *Application) apiDialer(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`/apiDialer`))
+	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
+	items := make([]any, 0, len(a.dialers))
+	for _, item := range a.dialers {
+		items = append(items, item.Info())
+	}
+	json.NewEncoder(w).Encode(items)
 }
 func (a *Application) apiBridge(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
-	bridges := make([]any, 0, len(a.bridges))
+	items := make([]any, 0, len(a.bridges))
 	for _, item := range a.bridges {
-		bridges = append(bridges, item.Info())
+		items = append(items, item.Info())
 	}
-	json.NewEncoder(w).Encode(bridges)
+	json.NewEncoder(w).Encode(items)
 }
 func (a *Application) apiRuntime(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
