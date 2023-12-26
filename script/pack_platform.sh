@@ -118,22 +118,19 @@ if [[ -f "$name" ]];then
 fi
 source=(
     "$target"
-    etc js ts
-    tsconfig.json main.d.ts
+    example
 )
 other=()
 case "$os" in
     linux)
         other=(
-            xray-webui.service
+            streamf.service
         )
     ;;
     windows)
         other=(
-            xray-webui-service.exe xray-webui-service.xml
-            run.bat install.bat uninstall.bat
-            tun2socks/tun2socks-windows-amd64.exe
-            tun2socks/wintun.dll
+            streamf-service.xml
+            streamf-service.exe
         )
     ;;
 esac

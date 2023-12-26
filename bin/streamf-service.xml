@@ -1,0 +1,11 @@
+<configuration>
+   <id>streamf-service</id>
+   <name>Stream Forwarding Service</name>
+   <description>Stream Forwarding for windows</description>
+   <workingdirectory>%BASE%</workingdirectory>
+   <executable>%BASE%\streamf.exe</executable>
+   <startargument>-conf</startargument>
+   <startargument>streamf.jsonnet</startargument>
+   <log mode="none"/>
+   <onfailure action="restart" delay="10 sec"/>
+</configuration>
