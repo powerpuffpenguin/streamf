@@ -78,8 +78,15 @@ type Router struct {
 	//  * curl -H "Authorization: Bearer " + rawURLBase64(XXXXX)
 	Access string `json:"access"`
 
+	// basic auth
+	Auth []BasicAuth `json:"auth"`
+
 	// Portal tag, if not emoty, enable portal mode
 	Portal Portal `json:"portal"`
+}
+type BasicAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 type ConnectDialer struct {
 	// Connect dialer with tag 'tcp'

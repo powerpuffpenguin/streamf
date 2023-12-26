@@ -52,6 +52,26 @@ func (l *HttpListener) Info() any {
 		`router`:  l.router,
 	}
 }
+func basicAuth(next http.HandlerFunc, auths []config.BasicAuth) http.HandlerFunc {
+	if len(auths) == 0 {
+		return next
+	}
+	keys := make(map[string]string)
+	for _, auth := range auths {
+		keys[auth.Username] = auth.Password
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if ok {
+			if value, ok := keys[username]; ok && value == password {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		w.Header().Set(`WWW-Authenticate`, `Basic realm="restricted", charset="UTF-8"`)
+		http.Error(w, `Unauthorized`, http.StatusUnauthorized)
+	})
+}
 func NewHttpListener(nk *network.Network,
 	log *slog.Logger, pool *pool.Pool,
 	dialers map[string]dialer.Dialer,
@@ -116,7 +136,7 @@ func NewHttpListener(nk *network.Network,
 				listener.Close()
 				return
 			}
-			mux.Post(router.Pattern, handler)
+			mux.Post(router.Pattern, basicAuth(handler, router.Auth))
 		case http.MethodPut:
 			if router.Portal.Tag == `` {
 				handler, e = listener.createHttp2(dialers, router)
@@ -127,7 +147,7 @@ func NewHttpListener(nk *network.Network,
 				listener.Close()
 				return
 			}
-			mux.Put(router.Pattern, handler)
+			mux.Put(router.Pattern, basicAuth(handler, router.Auth))
 		case http.MethodPatch:
 			if router.Portal.Tag == `` {
 				handler, e = listener.createHttp2(dialers, router)
@@ -138,7 +158,7 @@ func NewHttpListener(nk *network.Network,
 				listener.Close()
 				return
 			}
-			mux.Patch(router.Pattern, handler)
+			mux.Patch(router.Pattern, basicAuth(handler, router.Auth))
 		case `WS`:
 			if router.Portal.Tag == `` {
 				handler, e = listener.createWebsocket(dialers, router)
@@ -149,39 +169,39 @@ func NewHttpListener(nk *network.Network,
 				listener.Close()
 				return
 			}
-			mux.Get(router.Pattern, handler)
+			mux.Get(router.Pattern, basicAuth(handler, router.Auth))
 		case `API`:
 			for _, item := range api {
 				pattern := path.Join(router.Pattern, item.Path)
 				for _, method := range item.Method {
 					switch method {
 					case http.MethodGet:
-						mux.Get(pattern, item.Handler)
-						mux.Head(pattern, item.Handler)
+						mux.Get(pattern, basicAuth(item.Handler, router.Auth))
+						mux.Head(pattern, basicAuth(item.Handler, router.Auth))
 						log.Info(`new api router`,
 							`method`, method,
 							`pattern`, pattern,
 						)
 					case http.MethodPost:
-						mux.Post(pattern, item.Handler)
+						mux.Post(pattern, basicAuth(item.Handler, router.Auth))
 						log.Info(`new api router`,
 							`method`, method,
 							`pattern`, pattern,
 						)
 					case http.MethodPut:
-						mux.Put(pattern, item.Handler)
+						mux.Put(pattern, basicAuth(item.Handler, router.Auth))
 						log.Info(`new api router`,
 							`method`, method,
 							`pattern`, pattern,
 						)
 					case http.MethodPatch:
-						mux.Patch(pattern, item.Handler)
+						mux.Patch(pattern, basicAuth(item.Handler, router.Auth))
 						log.Info(`new api router`,
 							`method`, method,
 							`pattern`, pattern,
 						)
 					case http.MethodDelete:
-						mux.Delete(pattern, item.Handler)
+						mux.Delete(pattern, basicAuth(item.Handler, router.Auth))
 						log.Info(`new api router`,
 							`method`, method,
 							`pattern`, pattern,

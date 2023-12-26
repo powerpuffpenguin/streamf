@@ -69,6 +69,12 @@ local portal = {
         {
           method: 'API',
           pattern: '/',
+          auth: [
+            {
+              username: 'dev',
+              password: '123',
+            },
+          ],
         },
         {
           method: 'WS',
