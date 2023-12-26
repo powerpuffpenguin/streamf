@@ -16,6 +16,7 @@ index:
   * [http-portal-bridge](#http-portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
+* [api](#api)
 
 # run
 
@@ -552,4 +553,32 @@ pool sets the read and write cache for the connection
     cache: 128,
   },
 }
+```
+
+# api
+
+You can register the 'API' route in the http listener, which provides some http pages for querying the server running status.
+
+```
+{
+  listener: [
+    {
+      network: 'tcp',
+      addr: ':4000',
+      mode: 'http',
+      router: [
+        {
+          method: 'API',
+          pattern: '/api',
+          auth: [
+            {
+              username: 'dev',
+              password: '123',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
 ```

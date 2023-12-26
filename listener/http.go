@@ -173,6 +173,9 @@ func NewHttpListener(nk *network.Network,
 		case `API`:
 			for _, item := range api {
 				pattern := path.Join(router.Pattern, item.Path)
+				if item.Path == `/` && !strings.HasSuffix(pattern, `/`) {
+					pattern += `/`
+				}
 				for _, method := range item.Method {
 					switch method {
 					case http.MethodGet:

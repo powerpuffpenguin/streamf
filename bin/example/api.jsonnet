@@ -68,7 +68,7 @@ local portal = {
       router: [
         {
           method: 'API',
-          pattern: '/',
+          pattern: '/api',
           auth: [
             {
               username: 'dev',

@@ -16,6 +16,7 @@ index:
   * [http-portal-bridge](#http-portal-bridge)
 * [logger](#logger)
 * [pool](#pool)
+* [api](#api)
 
 # run
 
@@ -553,4 +554,32 @@ pool 爲連接設置讀寫緩存
     cache: 128,
   },
 }
+```
+
+# api
+
+你可以在 http 的 listener 中註冊 'API' 路由，她提供了一些 http 頁面用於查詢服務器運行狀態
+
+```
+{
+  listener: [
+    {
+      network: 'tcp',
+      addr: ':4000',
+      mode: 'http',
+      router: [
+        {
+          method: 'API',
+          pattern: '/api',
+          auth: [
+            {
+              username: 'dev',
+              password: '123',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
 ```
