@@ -17,6 +17,7 @@ index:
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
+* [fs](#fs)
 
 # run
 
@@ -577,6 +578,41 @@ pool 爲連接設置讀寫緩存
               password: '123',
             },
           ],
+        },
+      ],
+    },
+  ],
+}
+```
+
+# fs
+
+fs 用於將一個操作系統目錄以靜態 http 的形式發佈到 http listener 的路由中，這不是這個程式的本職工作但這個需求很常見並且用 golang 實現毫不費力，所以也一起集成了此功能
+
+```
+local auth = [
+  {
+    username: 'dev',
+    password: '123',
+  },
+];
+{
+  listener: [
+    {
+      network: 'tcp',
+      addr: ':4000',
+      mode: 'http',
+      router: [
+        {
+          method: 'FS',
+          pattern: '/fs',
+          fs: '/tmp',
+          auth: auth,
+        },
+        {
+          method: 'API',
+          pattern: '/',
+          auth: auth,
         },
       ],
     },

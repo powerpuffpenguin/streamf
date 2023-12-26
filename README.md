@@ -17,6 +17,7 @@ index:
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
+* [fs](#fs)
 
 # run
 
@@ -576,6 +577,41 @@ You can register the 'API' route in the http listener, which provides some http 
               password: '123',
             },
           ],
+        },
+      ],
+    },
+  ],
+}
+```
+
+# fs
+
+fs is used to publish an operating system directory to the route of the http listener in the form of static http. This is not the main job of this program, but this requirement is very common and can be achieved easily with golang, so this function is also integrated.
+
+```
+local auth = [
+  {
+    username: 'dev',
+    password: '123',
+  },
+];
+{
+  listener: [
+    {
+      network: 'tcp',
+      addr: ':4000',
+      mode: 'http',
+      router: [
+        {
+          method: 'FS',
+          pattern: '/fs',
+          fs: '/tmp',
+          auth: auth,
+        },
+        {
+          method: 'API',
+          pattern: '/',
+          auth: auth,
         },
       ],
     },
