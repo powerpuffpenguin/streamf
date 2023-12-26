@@ -65,7 +65,11 @@ func (a *Application) apiApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	m[`bridges`] = items
 
-	json.NewEncoder(w).Encode(m)
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(m)
 }
 func (a *Application) apiListener(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
@@ -73,7 +77,11 @@ func (a *Application) apiListener(w http.ResponseWriter, r *http.Request) {
 	for _, item := range a.listeners {
 		items = append(items, item.Info())
 	}
-	json.NewEncoder(w).Encode(items)
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(items)
 }
 func (a *Application) apiDialer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
@@ -81,7 +89,11 @@ func (a *Application) apiDialer(w http.ResponseWriter, r *http.Request) {
 	for _, item := range a.dialers {
 		items = append(items, item.Info())
 	}
-	json.NewEncoder(w).Encode(items)
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(items)
 }
 func (a *Application) apiBridge(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
@@ -89,11 +101,19 @@ func (a *Application) apiBridge(w http.ResponseWriter, r *http.Request) {
 	for _, item := range a.bridges {
 		items = append(items, item.Info())
 	}
-	json.NewEncoder(w).Encode(items)
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(items)
 }
 func (a *Application) apiRuntime(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
-	json.NewEncoder(w).Encode(map[string]any{
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(map[string]any{
 		`platform`: fmt.Sprintf(`%s/%s, %s, %s, %s`,
 			runtime.GOOS, runtime.GOARCH,
 			runtime.Version(),
@@ -124,11 +144,11 @@ func (a *Application) apiRoot(w http.ResponseWriter, r *http.Request) {
 <p>
 	<h1>API</h1>
 	<ul>
-	<li><a href="application">application</a></li>
-	<li><a href="listener">listener</a></li>
-	<li><a href="dialer">dialer</a></li>
-	<li><a href="bridge">bridge</a></li>
-	<li><a href="runtime">runtime</a></li>
+	<li><a href="application?beauty=1">application</a></li>
+	<li><a href="listener?beauty=1">listener</a></li>
+	<li><a href="dialer?beauty=1">dialer</a></li>
+	<li><a href="bridge?beauty=1">bridge</a></li>
+	<li><a href="runtime?beauty=1">runtime</a></li>
 	</ul>
 </p>
 </body></html>`))
