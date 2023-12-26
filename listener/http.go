@@ -212,6 +212,19 @@ func NewHttpListener(nk *network.Network,
 					}
 				}
 			}
+		case `FS`:
+			pattern := router.Pattern
+			if !strings.HasSuffix(pattern, `/`) {
+				pattern += `/`
+			}
+			fs := http.FileServer(http.Dir(router.FS))
+			serveHTTP := http.StripPrefix(pattern, fs).ServeHTTP
+			mux.Head(pattern, basicAuth(serveHTTP, router.Auth))
+			mux.Get(pattern, basicAuth(serveHTTP, router.Auth))
+			log.Info(`new fs router`,
+				`pattern`, pattern,
+			)
+			listener.router[`FS `+pattern] = router.FS
 		default:
 			listener.Close()
 			e = errHttpMethod

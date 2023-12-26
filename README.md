@@ -580,5 +580,5 @@ You can register the 'API' route in the http listener, which provides some http 
       ],
     },
   ],
-};
+}
 ```

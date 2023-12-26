@@ -83,6 +83,8 @@ type Router struct {
 
 	// Portal tag, if not emoty, enable portal mode
 	Portal Portal `json:"portal"`
+
+	FS string `json:"fs"`
 }
 type BasicAuth struct {
 	Username string `json:"username"`
