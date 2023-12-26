@@ -329,6 +329,7 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 		`close`:  closeDuration.String(),
 		`access`: router.Access,
 		`dialer`: router.Dialer.Tag,
+		`auth`:   router.Auth,
 	}
 	return
 }
@@ -395,6 +396,7 @@ func (l *HttpListener) createHttp2Portal(nk *network.Network, router *config.Rou
 		`heart`:        router.Portal.Heart,
 		`heartTimeout`: router.Portal.HeartTimeout,
 		`timeout`:      router.Portal.Timeout,
+		`auth`:         router.Auth,
 	}
 	return
 }
@@ -521,6 +523,7 @@ func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config
 		`heart`:        router.Portal.Heart,
 		`heartTimeout`: router.Portal.HeartTimeout,
 		`timeout`:      router.Portal.Timeout,
+		`auth`:         router.Auth,
 	}
 	return
 }
@@ -603,6 +606,7 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 		`close`:  closeDuration.String(),
 		`access`: router.Access,
 		`dialer`: router.Dialer.Tag,
+		`auth`:   router.Auth,
 	}
 	return
 }
