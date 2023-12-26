@@ -38,6 +38,8 @@ type HttpListener struct {
 
 	tag, network, addr string
 	secure             bool
+
+	router map[string]any
 }
 
 func (l *HttpListener) Info() any {
@@ -47,6 +49,7 @@ func (l *HttpListener) Info() any {
 		`addr`:    l.addr,
 		`secure`:  l.secure,
 		`portal`:  true,
+		`router`:  l.router,
 	}
 }
 func NewHttpListener(nk *network.Network,
@@ -94,6 +97,8 @@ func NewHttpListener(nk *network.Network,
 		network: addr.Network(),
 		addr:    addr.String(),
 		secure:  secure,
+
+		router: make(map[string]any),
 	}
 	var (
 		mux     = httpmux.New(log)
@@ -299,6 +304,12 @@ func (l *HttpListener) createHttp2(dialers map[string]dialer.Dialer, router *con
 		}
 		network.Bridging(ioutil.NewReadWriter(r.Body, w, r.Body), dst.ReadWriteCloser, l.pool, closeDuration)
 	}
+
+	l.router[strings.ToUpper(router.Method)+` `+router.Pattern] = map[string]any{
+		`close`:  closeDuration.String(),
+		`access`: router.Access,
+		`dialer`: router.Dialer.Tag,
+	}
 	return
 }
 func (l *HttpListener) createHttp2Portal(nk *network.Network, router *config.Router) (handler http.HandlerFunc, e error) {
@@ -356,6 +367,14 @@ func (l *HttpListener) createHttp2Portal(nk *network.Network, router *config.Rou
 		case listener.ch <- conn:
 			wc.Wait()
 		}
+	}
+
+	l.router[strings.ToUpper(router.Method)+` `+router.Pattern] = map[string]any{
+		`access`:       router.Access,
+		`portal`:       router.Portal.Tag,
+		`heart`:        router.Portal.Heart,
+		`heartTimeout`: router.Portal.HeartTimeout,
+		`timeout`:      router.Portal.Timeout,
 	}
 	return
 }
@@ -475,6 +494,14 @@ func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config
 		case listener.ch <- httpmux.NewWebsocketConn(ws):
 		}
 	}
+
+	l.router[`WebSocket `+router.Pattern] = map[string]any{
+		`access`:       router.Access,
+		`portal`:       router.Portal.Tag,
+		`heart`:        router.Portal.Heart,
+		`heartTimeout`: router.Portal.HeartTimeout,
+		`timeout`:      router.Portal.Timeout,
+	}
 	return
 }
 
@@ -551,6 +578,11 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 			`url`, addr.URL,
 		)
 		network.Bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
+	}
+	l.router[`WebSocket `+router.Pattern] = map[string]any{
+		`close`:  closeDuration.String(),
+		`access`: router.Access,
+		`dialer`: router.Dialer.Tag,
 	}
 	return
 }
