@@ -18,6 +18,7 @@ index:
 * [pool](#pool)
 * [api](#api)
 * [fs](#fs)
+* [docker](#docker)
 
 # run
 
@@ -618,4 +619,12 @@ local auth = [
     },
   ],
 }
+```
+
+# docker
+
+```
+docker run \
+  -v Your_Configure_Path:/data/streamf.jsonnet:ro \
+  -d king011/streamf:v0.0.1
 ```
