@@ -51,12 +51,22 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 	}
 	var (
 		network = `tcp`
-		addr    = u.Host
+		addr    string
 	)
 	if opts.Network != `` {
 		network = opts.Network
 	}
-	if opts.Addr != `` {
+	if opts.Addr == `` {
+		if u.Port() == `` {
+			if secure {
+				addr = u.Host + `:443`
+			} else {
+				addr = u.Host + `:80`
+			}
+		} else {
+			addr = u.Host
+		}
+	} else {
 		addr = opts.Addr
 	}
 	rawDialer, e := nk.Dialer(network, addr, nil)
