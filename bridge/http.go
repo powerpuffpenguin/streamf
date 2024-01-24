@@ -62,9 +62,9 @@ func newHttpBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, diale
 	tag := opts.Tag
 	if tag == `` {
 		if secure {
-			tag = `ws ` + network + `+tls://` + addr
+			tag = `http ` + network + `+tls://` + addr
 		} else {
-			tag = `ws ` + network + `://` + addr
+			tag = `http ` + network + `://` + addr
 		}
 	}
 	log = log.With(`bridge`, tag, `dialer`, opts.Dialer.Tag)

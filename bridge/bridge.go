@@ -136,6 +136,7 @@ func (b *bridge) Serve() (e error) {
 func (b *bridge) serve(rw io.ReadWriteCloser) {
 	dst, e := b.dialer.Connect(context.Background())
 	if e != nil {
+		rw.Close()
 		b.log.Warn(`connect fail`,
 			`error`, e,
 		)
