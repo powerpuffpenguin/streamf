@@ -14,14 +14,15 @@ import (
 
 func main() {
 	var (
-		conf          string
-		version, help bool
-		logLevel      string
+		conf                 string
+		version, help, print bool
+		logLevel             string
 	)
 	flag.StringVar(&conf, "conf", "", "Load config file path")
 	flag.StringVar(&logLevel, "log", "", "Log level [debug info warn error]")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.BoolVar(&help, "help", false, "Show help")
+	flag.BoolVar(&print, "print", false, "Print config to json")
 	flag.Parse()
 	if version {
 		fmt.Printf(`streamf-%s
@@ -42,9 +43,17 @@ func main() {
 	}
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 	var c config.Config
-	e := c.Load(conf)
-	if e != nil {
-		log.Fatalln(e)
+	if print {
+		e := c.Print(conf)
+		if e != nil {
+			log.Fatalln(e)
+		}
+		return
+	} else {
+		e := c.Load(conf)
+		if e != nil {
+			log.Fatalln(e)
+		}
 	}
 	if logLevel != `` {
 		c.Logger.Level = logLevel

@@ -2,6 +2,7 @@
 
 * fix http bridge default tag prefix 'ws'
 * fix bridge connect error not close source connection
+* add command flags -print
 
 # v0.0.1
 

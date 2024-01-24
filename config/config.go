@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/go-jsonnet"
 )
@@ -27,5 +28,14 @@ func (c *Config) Load(filename string) (e error) {
 	if e != nil {
 		return
 	}
+	return
+}
+func (c *Config) Print(filename string) (e error) {
+	vm := jsonnet.MakeVM()
+	jsonStr, e := vm.EvaluateFile(filename)
+	if e != nil {
+		return
+	}
+	fmt.Print(jsonStr)
 	return
 }
