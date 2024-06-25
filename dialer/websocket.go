@@ -26,6 +26,7 @@ type WebsocketDialer struct {
 	timeout    time.Duration
 	retry      int
 	dialer     *websocket.Dialer
+	fast       bool
 	header     http.Header
 	rawDialer  network.Dialer
 }
@@ -108,6 +109,7 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 				return rawDialer.DialContext(ctx)
 			},
 		},
+		fast:      opts.Fast,
 		header:    header,
 		rawDialer: rawDialer,
 	}
@@ -154,13 +156,24 @@ func (d *WebsocketDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 	go func() {
 		conn, e := d.connect(ctx)
 		if e == nil {
+			var result connectResult
+			if d.fast {
+				result = connectResult{
+					Conn: &Conn{
+						ReadWriteCloser: conn.NetConn(),
+						remoteAddr:      d.remoteAddr,
+					},
+				}
+			} else {
+				result = connectResult{
+					Conn: &Conn{
+						ReadWriteCloser: httpmux.NewWebsocketConn(conn),
+						remoteAddr:      d.remoteAddr,
+					},
+				}
+			}
 			select {
-			case ch <- connectResult{
-				Conn: &Conn{
-					ReadWriteCloser: httpmux.NewWebsocketConn(conn),
-					remoteAddr:      d.remoteAddr,
-				},
-			}:
+			case ch <- result:
 			case <-d.done:
 				conn.Close()
 			case <-ctx.Done():

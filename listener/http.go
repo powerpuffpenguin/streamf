@@ -480,7 +480,10 @@ func (w *http2PortalWriter) Write(b []byte) (n int, e error) {
 }
 
 func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config.Router) (handler http.HandlerFunc, e error) {
-	log := l.log.With(`portal`, router.Portal.Tag)
+	log := l.log.With(`portal`, router.Portal.Tag,
+		`method`, `WebSocket`,
+		`fast`, router.Fast,
+	)
 	var accessToken string
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
@@ -501,7 +504,6 @@ func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config
 		)
 	} else {
 		log.Info(`new portal router`,
-			`method`, `WebSocket`,
 			`pattern`, router.Pattern,
 			`access`, router.Access,
 		)
@@ -522,6 +524,12 @@ func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config
 			)
 			return
 		}
+		var c net.Conn
+		if router.Fast {
+			c = ws.NetConn()
+		} else {
+			c = httpmux.NewWebsocketConn(ws)
+		}
 		select {
 		case <-l.done:
 			ws.Close()
@@ -529,7 +537,7 @@ func (l *HttpListener) createWebsocketPortal(nk *network.Network, router *config
 			ws.Close()
 		case <-r.Context().Done():
 			ws.Close()
-		case listener.ch <- httpmux.NewWebsocketConn(ws):
+		case listener.ch <- c:
 		}
 	}
 
@@ -552,7 +560,10 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 		log.Error(`dialer not found`, `dialer`, router.Dialer.Tag)
 		return
 	}
-	log = log.With(`method`, `WebSocket`, `dialer`, router.Dialer.Tag)
+	log = log.With(`method`, `WebSocket`,
+		`fast`, router.Fast,
+		`dialer`, router.Dialer.Tag,
+	)
 	var accessToken string
 	if router.Access != `` {
 		accessToken = `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(router.Access))
@@ -579,7 +590,6 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 		)
 	} else {
 		log.Info(`new router`,
-			`method`, `WebSocket`,
 			`pattern`, router.Pattern,
 			`access`, router.Access,
 			`close`, closeDuration,
@@ -616,7 +626,11 @@ func (l *HttpListener) createWebsocket(dialers map[string]dialer.Dialer, router 
 			`secure`, addr.Secure,
 			`url`, addr.URL,
 		)
-		network.Bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
+		if router.Fast {
+			network.Bridging(ws.NetConn(), dst.ReadWriteCloser, l.pool, closeDuration)
+		} else {
+			network.Bridging(httpmux.NewWebsocketConn(ws), dst.ReadWriteCloser, l.pool, closeDuration)
+		}
 	}
 	l.router[`WebSocket `+router.Pattern] = map[string]any{
 		`close`:  closeDuration.String(),

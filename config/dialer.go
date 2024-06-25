@@ -18,6 +18,8 @@ type Dialer struct {
 	Addr string `json:"addr"`
 	// optional network
 	Network string `json:"network"`
+	// If true, only websocket handshake is used, and tcp communication is used directly after the handshake is successful.
+	Fast bool `json:"fast"`
 	// If true, do not verify whether the certificate is valid when connecting to the tls server
 	AllowInsecure bool `json:"allowInsecure"`
 	// If dialing fails, how many times to retry

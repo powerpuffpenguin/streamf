@@ -84,6 +84,9 @@ type Router struct {
 	// Portal tag, if not emoty, enable portal mode
 	Portal Portal `json:"portal"`
 
+	// If true, only websocket handshake is used, and tcp communication is used directly after the handshake is successful.
+	Fast bool `json:"fast"`
+
 	FS string `json:"fs"`
 }
 type BasicAuth struct {
