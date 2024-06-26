@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 )
 
 func newWebsocketBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Bridge, u *url.URL, secure bool) (bridge *bridge, e error) {
+	fmt.Println(opts)
 	found, ok := dialers[opts.Dialer.Tag]
 	if !ok {
 		e = errors.New(`dialer not found: ` + opts.Dialer.Tag)
@@ -45,7 +47,7 @@ func newWebsocketBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, 
 			tag = `ws ` + network + `://` + addr
 		}
 	}
-	log = log.With(`bridge`, tag, `dialer`, opts.Dialer.Tag)
+	log = log.With(`bridge`, tag, `dialer`, opts.Dialer.Tag, `fast`, opts.Fast)
 	rawDialer, e := nk.Dialer(network, addr, nil)
 	if e != nil {
 		log.Error(`new dialer fail`, `error`, e)
@@ -98,6 +100,9 @@ func newWebsocketBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, 
 			ws, _, e := websocketDialer.DialContext(ctx, opts.URL, header)
 			if e != nil {
 				return nil, e
+			}
+			if opts.Fast {
+				return ws.NetConn(), nil
 			}
 			return httpmux.NewWebsocketConn(ws), nil
 		}),
