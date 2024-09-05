@@ -197,6 +197,8 @@ curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 
 > Incoming and outgoing traffic can be http1.x, but http1.x does not support data streaming and may wait until the end of the request or response traffic transmission before transmitting to the peer. http1.x is generally not recommended.
 
+Starting from v0.03, websocket supports the **fast** attribute. If set to true, it will only use websocket to establish a connection and directly use tcp to transmit data after the connection is established.
+
 # unix
 
 By default both incoming and outgoing traffic uses tcp, but you can set network to 'unix', which enables unix sockets, which are more efficient than sockets through the network card, but are only supported under linux

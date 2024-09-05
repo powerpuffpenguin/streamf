@@ -197,6 +197,8 @@ curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 
 > 流入和流出流量可以是 http1.x，但是 http1.x 並不支持數據流，它可能會等到請求或響應流量傳輸完畢才傳輸到對端。通常不建議使用 http1.x
 
+從 v0.03 開始 websocket 支持 **fast** 屬性，如果設置爲 true，它將只使用 websocket 建立連接，在連接建立後直接使用 tcp 傳輸數據
+
 # unix
 
 默認流入和流出流量都使用 tcp，但是你可以設置 network 爲 unix，這樣可以啓用 unix socket，它比經過網卡的 socket 更高效，但是它只在 linux 下被支持
