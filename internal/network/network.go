@@ -67,7 +67,9 @@ type addrListener struct {
 func (a *addrListener) Addr() net.Addr {
 	return a.addr
 }
-
+func (n *Network) ListenUdp(address string) (l net.Listener, e error) {
+	return newUdpListener(address)
+}
 func (n *Network) Listen(network, address string) (l net.Listener, e error) {
 	switch network {
 	case `tcp`:
@@ -89,6 +91,9 @@ func (n *Network) ListenTLS(network, address string, config *tls.Config) (l net.
 	if config == nil || len(config.Certificates) == 0 &&
 		config.GetCertificate == nil && config.GetConfigForClient == nil {
 		e = errors.New("tls: neither Certificates, GetCertificate, nor GetConfigForClient set in Config")
+		return
+	} else if network == `udp` {
+		e = errors.New(`network not supported: ` + network)
 		return
 	}
 	l, e = n.Listen(network, address)

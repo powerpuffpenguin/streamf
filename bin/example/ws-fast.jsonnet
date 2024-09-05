@@ -55,31 +55,31 @@
       },
     },
     {
-        network: 'pipe',
-        addr: 'http.pipe',
-        mode: 'http',
-        router: [
-            {
-                method: 'WS',
-                pattern: '/ws',
-                fast :true,
-                dialer: {
-                    tag: 'tls',
-                    close: '1s',
-                },
-            },
-            {
-                method: 'WS',
-                pattern: '/portal',
-                fast :true,
-                portal: {
-                    tag: 'listener-portal-ws',
-                    timeout: '200ms',
-                    heart: '40s',
-                    heartTimeout: '1s',
-                },
-            },
-        ],
+      network: 'pipe',
+      addr: 'http.pipe',
+      mode: 'http',
+      router: [
+        {
+          method: 'WS',
+          pattern: '/ws',
+          fast: true,
+          dialer: {
+            tag: 'tls',
+            close: '1s',
+          },
+        },
+        {
+          method: 'WS',
+          pattern: '/portal',
+          fast: true,
+          portal: {
+            tag: 'listener-portal-ws',
+            timeout: '200ms',
+            heart: '40s',
+            heartTimeout: '1s',
+          },
+        },
+      ],
     },
   ],
 }

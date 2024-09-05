@@ -85,7 +85,7 @@ func NewHttpListener(nk *network.Network,
 	if opts.TLS.CertFile != `` && opts.TLS.KeyFile != `` {
 		secure = true
 	}
-	l, e = nk.Listen(opts.Network, opts.Addr)
+	l, e = nk.Listen( opts.Network, opts.Addr)
 	if e != nil {
 		log.Error(`new http listener fail`, `error`, e)
 		return
