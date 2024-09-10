@@ -34,6 +34,9 @@ type Dialer struct {
 
 	// http client header
 	Header map[string][]string `json:"header"`
+
+	// udp settings
+	UDP UDP `json:"udp"`
 }
 type Bridge struct {
 	Tag string `json:"tag"`

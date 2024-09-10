@@ -8,13 +8,17 @@ import (
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/powerpuffpenguin/streamf/config"
 )
 
 var errUdpListenerClosed = errors.New(`udp listener already closed`)
 var errUdpConnClosed = errors.New(`udp conn already closed`)
 
 type udpListener struct {
-	addr *net.UDPAddr
+	size    int
+	timeout time.Duration
+	addr    *net.UDPAddr
 
 	l *net.UDPConn
 
@@ -26,10 +30,24 @@ type udpListener struct {
 	close chan *udpToTcp
 }
 
-func newUdpListener(address string) (l *udpListener, e error) {
+func newUdpListener(address string, opts *config.UDP) (l *udpListener, e error) {
 	addr, e := net.ResolveUDPAddr(`udp`, address)
 	if e != nil {
 		return
+	}
+	var timeout time.Duration
+	if opts.Timeout == `` {
+		timeout = time.Second * 60
+	} else {
+		var err error
+		timeout, err = time.ParseDuration(opts.Timeout)
+		if err != nil {
+			timeout = time.Second * 60
+		}
+	}
+	size := opts.Size
+	if size < 128 {
+		size = 1024 * 2
 	}
 	ul, e := net.ListenUDP("udp", addr)
 	if e != nil {
@@ -38,11 +56,13 @@ func newUdpListener(address string) (l *udpListener, e error) {
 	l = &udpListener{
 		addr: addr,
 
-		l:     ul,
-		done:  make(chan struct{}),
-		msg:   make(chan readUdpMessage, 32),
-		ch:    make(chan *udpToTcp),
-		close: make(chan *udpToTcp),
+		l:       ul,
+		done:    make(chan struct{}),
+		msg:     make(chan readUdpMessage, 32),
+		ch:      make(chan *udpToTcp),
+		close:   make(chan *udpToTcp),
+		size:    size,
+		timeout: timeout,
 	}
 	go l.run()
 	return

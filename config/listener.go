@@ -11,6 +11,8 @@ type BasicListener struct {
 	Addr    string `json:"addr"`
 
 	TLS TLS `json:"tls"`
+	// udp settings
+	UDP UDP `json:"udp"`
 }
 type TLS struct {
 	CertFile string   `json:"certFile"`
@@ -55,6 +57,8 @@ type Listener struct {
 	// Specify route for http mode
 	Router []*Router `json:"router"`
 	Portal Portal    `json:"portal"`
+	// udp settings
+	UDP UDP `json:"udp"`
 }
 type Portal struct {
 	Tag string `json:"tag"`

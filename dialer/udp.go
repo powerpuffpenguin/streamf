@@ -3,7 +3,6 @@ package dialer
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -13,30 +12,46 @@ import (
 
 	"github.com/powerpuffpenguin/streamf/config"
 	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/pool"
 )
 
 type udpDialer struct {
 	url        string
 	remoteAddr RemoteAddr
 	timeout    time.Duration
+	pool       *pool.Pool
+	size       int
+	frame      int
 }
 
-func newUdpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u *url.URL) (dialer *udpDialer, e error) {
+func newUdpDialer(
+	nk *network.Network, log *slog.Logger,
+	opts *config.Dialer, u *url.URL,
+	pool *pool.Pool) (dialer *udpDialer, e error) {
 	log = log.With(`dialer`, opts.Tag)
 	var timeout time.Duration
-	if opts.Timeout == `` {
-		timeout = time.Millisecond * 500
+	if opts.UDP.Timeout == `` {
+		timeout = time.Second * 60
 	} else {
 		var err error
-		timeout, err = time.ParseDuration(opts.Timeout)
+		timeout, err = time.ParseDuration(opts.UDP.Timeout)
 		if err != nil {
-			timeout = time.Millisecond * 500
-			log.Warn(`parse duration fail, used default close duration.`,
+			timeout = time.Second * 60
+			log.Warn(`parse duration fail, used default timeout duration.`,
 				`error`, err,
 				`timeout`, timeout,
 			)
 		}
 	}
+	size := opts.UDP.Size
+	if size < 128 {
+		size = 1024 * 2
+	}
+	frame := opts.UDP.Frame
+	if frame < 1 {
+		frame = 16
+	}
+
 	var (
 		network = `tcp`
 		addr    = u.Host
@@ -71,6 +86,8 @@ func newUdpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u 
 		`addr`, addr,
 		`url`, opts.URL,
 		`timeout`, timeout,
+		`size`, size,
+		`frame`, frame,
 	)
 	dialer = &udpDialer{
 		remoteAddr: RemoteAddr{
@@ -82,6 +99,9 @@ func newUdpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u 
 		},
 		url:     opts.URL,
 		timeout: timeout,
+		pool:    pool,
+		size:    size,
+		frame:   frame,
 	}
 	return
 }
@@ -98,7 +118,7 @@ func (u *udpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		return
 	}
 	conn = &Conn{
-		ReadWriteCloser: newTcpFromUdp(c),
+		ReadWriteCloser: newTcpFromUdp(c, u.pool, u.timeout, u.size, u.frame),
 		remoteAddr:      u.remoteAddr,
 	}
 	return
@@ -113,11 +133,16 @@ func (u *udpDialer) Info() any {
 		`addr`:    u.remoteAddr.Addr,
 		`url`:     u.remoteAddr.URL,
 		`secure`:  u.remoteAddr.Secure,
-		`close`:   u.timeout.String(),
+		`timeout`: u.timeout.String(),
+		`size`:    u.size,
+		`frame`:   u.frame,
 	}
 }
 
 type tcpFromUdp struct {
+	pool *pool.Pool
+	size int
+
 	c     *net.UDPConn
 	close uint32
 	done  chan struct{}
@@ -131,19 +156,22 @@ type tcpFromUdp struct {
 	w *io.PipeWriter
 }
 
-func newTcpFromUdp(c *net.UDPConn) *tcpFromUdp {
+func newTcpFromUdp(c *net.UDPConn, pool *pool.Pool, timeout time.Duration, size, frame int) *tcpFromUdp {
 	r, w := io.Pipe()
 	cc := &tcpFromUdp{
+		pool: pool,
+		size: size,
+
 		c:    c,
 		done: make(chan struct{}),
 
-		ch:     make(chan []byte, 10),
-		buf:    make([]byte, 1024*2+2),
+		ch:     make(chan []byte, frame),
+		buf:    make([]byte, size+2),
 		signal: make(chan bool, 1),
 		r:      r,
 		w:      w,
 	}
-	go cc.run()
+	go cc.run(timeout)
 	return cc
 }
 func (c *tcpFromUdp) Read(b []byte) (n int, e error) {
@@ -165,7 +193,6 @@ func (c *tcpFromUdp) Read(b []byte) (n int, e error) {
 		}
 		i, e = c.c.Read(c.buf[2:])
 		if e != nil {
-			fmt.Println(`Read udp err`, e)
 			return
 		} else if i > 0 {
 			binary.LittleEndian.PutUint16(c.buf, uint16(i))
@@ -177,15 +204,21 @@ func (c *tcpFromUdp) Read(b []byte) (n int, e error) {
 func (c *tcpFromUdp) Write(b []byte) (n int, e error) {
 	return c.w.Write(b)
 }
-func (c *tcpFromUdp) run() {
+func (c *tcpFromUdp) run(timeout time.Duration) {
 	go func() {
-		timer := time.NewTicker(time.Second * 10)
-		count := 0
+		var (
+			wait  = timeout / (time.Second * 10)
+			timer = time.NewTicker(time.Second * 10)
+			count time.Duration
+		)
+		if wait == 0 {
+			wait = 1
+		}
 		for {
 			select {
 			case <-timer.C:
 				count++
-				if count == 6 { //timeout
+				if count == wait { //timeout
 					timer.Stop()
 					c.Close()
 					return
@@ -197,10 +230,18 @@ func (c *tcpFromUdp) run() {
 	}()
 
 	var (
-		b = make([]byte, 1024*2)
-		e error
-		n int
+		data []byte
+		b    []byte
+		e    error
+		n    int
 	)
+	if c.pool.Size() < c.size {
+		b = make([]byte, c.size)
+	} else {
+		data = c.pool.Get()
+		b = data
+	}
+
 	for {
 		_, e = io.ReadAtLeast(c.r, b[:2], 2)
 		if e != nil {
@@ -209,6 +250,10 @@ func (c *tcpFromUdp) run() {
 		n = int(binary.LittleEndian.Uint16(b))
 		if n > len(b) {
 			b = make([]byte, n)
+			if data != nil {
+				c.pool.Put(data)
+				data = nil
+			}
 		}
 		if n > 0 {
 			_, e = io.ReadAtLeast(c.r, b[:n], n)
@@ -217,7 +262,6 @@ func (c *tcpFromUdp) run() {
 			}
 			_, e = c.c.Write(b[:n])
 			if e != nil {
-				fmt.Println(`Write udp err`, e)
 				break
 			}
 			select {
@@ -227,6 +271,9 @@ func (c *tcpFromUdp) run() {
 		}
 	}
 	c.Close()
+	if data != nil {
+		c.pool.Put(data)
+	}
 }
 func (c *tcpFromUdp) Close() (e error) {
 	if c.close == 0 && atomic.CompareAndSwapUint32(&c.close, 0, 1) {

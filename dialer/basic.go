@@ -106,8 +106,8 @@ func (d *BasicDialer) Info() any {
 		`url`:     d.remoteAddr.URL,
 		`secure`:  d.remoteAddr.Secure,
 
-		`close`: d.timeout.String(),
-		`retry`: d.retry,
+		`timeout`: d.timeout.String(),
+		`retry`:   d.retry,
 	}
 }
 func (d *BasicDialer) Tag() string {

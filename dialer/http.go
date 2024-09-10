@@ -42,7 +42,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 		timeout, err = time.ParseDuration(opts.Timeout)
 		if err != nil {
 			timeout = time.Millisecond * 500
-			log.Warn(`parse duration fail, used default close duration.`,
+			log.Warn(`parse duration fail, used default timeout duration.`,
 				`error`, err,
 				`timeout`, timeout,
 			)
@@ -176,8 +176,8 @@ func (d *HttpDialer) Info() any {
 		`url`:     d.remoteAddr.URL,
 		`secure`:  d.remoteAddr.Secure,
 
-		`close`: d.timeout.String(),
-		`retry`: d.retry,
+		`timeout`: d.timeout.String(),
+		`retry`:   d.retry,
 	}
 }
 func (d *HttpDialer) Tag() string {
