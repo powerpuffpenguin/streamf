@@ -43,7 +43,7 @@ func NewBasicListener(nk *network.Network, log *slog.Logger, pool *pool.Pool, di
 			return
 		}
 	} else if opts.Network == `udp` {
-		l, e = nk.ListenUdp(opts.Addr, &opts.UDP)
+		l, e = nk.ListenUdp(opts.Addr, &opts.UDP, pool)
 		if e != nil {
 			log.Error(`new basic listener fail`, `error`, e)
 			return
