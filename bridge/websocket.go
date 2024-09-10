@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -22,7 +21,6 @@ import (
 )
 
 func newWebsocketBridge(nk *network.Network, log *slog.Logger, pool *pool.Pool, dialers map[string]dialer.Dialer, opts *config.Bridge, u *url.URL, secure bool) (bridge *bridge, e error) {
-	fmt.Println(opts)
 	found, ok := dialers[opts.Dialer.Tag]
 	if !ok {
 		e = errors.New(`dialer not found: ` + opts.Dialer.Tag)

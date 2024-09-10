@@ -31,6 +31,9 @@ type Dialer struct {
 
 	// ping http default '40s'
 	Ping string `json:"ping"`
+
+	// http client header
+	Header map[string][]string `json:"header"`
 }
 type Bridge struct {
 	Tag string `json:"tag"`
@@ -59,4 +62,7 @@ type Bridge struct {
 
 	// ping http default '40s'
 	Ping string `json:"ping"`
+
+	// http client header
+	Header map[string][]string `json:"header"`
 }

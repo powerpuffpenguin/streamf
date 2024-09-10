@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync/atomic"
@@ -161,7 +162,7 @@ func newUdpToTcp(l *udpListener, addr *net.UDPAddr) *udpToTcp {
 		l:      l,
 		addr:   addr,
 		done:   make(chan struct{}),
-		ch:     make(chan []byte, 10),
+		ch:     make(chan []byte, 16),
 		signal: make(chan bool, 1),
 		r:      r,
 		w:      w,
@@ -177,13 +178,25 @@ func (c *udpToTcp) putRead(msg []byte) {
 	}
 
 	binary.LittleEndian.PutUint16(msg, uint16(len(msg)-2))
-	select {
-	case <-c.done:
-		return
-	case c.ch <- msg:
-		return
-	default:
+	for {
+		select {
+		case <-c.done:
+			return
+		case c.ch <- msg:
+			return
+		default:
+		}
+
+		select {
+		case <-c.done:
+			return
+		case c.ch <- msg:
+			return
+		case <-c.ch:
+			fmt.Println(`loss`, time.Now(), len(msg)-2)
+		}
 	}
+
 }
 
 func (c *udpToTcp) Read(b []byte) (n int, err error) {
@@ -249,6 +262,7 @@ func (c *udpToTcp) run() {
 			}
 			_, e = c.l.l.WriteToUDP(b[:n], c.addr)
 			if e != nil {
+				fmt.Println(`Write udp err`, e)
 				break
 			}
 			select {

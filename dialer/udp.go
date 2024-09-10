@@ -3,6 +3,7 @@ package dialer
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -164,6 +165,7 @@ func (c *tcpFromUdp) Read(b []byte) (n int, e error) {
 		}
 		i, e = c.c.Read(c.buf[2:])
 		if e != nil {
+			fmt.Println(`Read udp err`, e)
 			return
 		} else if i > 0 {
 			binary.LittleEndian.PutUint16(c.buf, uint16(i))
@@ -215,6 +217,7 @@ func (c *tcpFromUdp) run() {
 			}
 			_, e = c.c.Write(b[:n])
 			if e != nil {
+				fmt.Println(`Write udp err`, e)
 				break
 			}
 			select {

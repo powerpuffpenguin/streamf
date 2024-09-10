@@ -83,10 +83,22 @@ func newWebsocketDialer(nk *network.Network, log *slog.Logger, opts *config.Dial
 	)
 
 	var header http.Header
+	if len(opts.Header) != 0 {
+		header = make(http.Header, len(opts.Header)+1)
+		for k, vs := range opts.Header {
+			for _, v := range vs {
+				header.Add(k, v)
+			}
+		}
+	}
 	if opts.Access != `` {
 		access := `Bearer ` + base64.RawURLEncoding.EncodeToString([]byte(opts.Access))
-		header = http.Header{
-			`Authorization`: []string{access},
+		if header == nil {
+			header = http.Header{
+				`Authorization`: []string{access},
+			}
+		} else {
+			header.Set(`Authorization`, access)
 		}
 	}
 	dialer = &WebsocketDialer{
