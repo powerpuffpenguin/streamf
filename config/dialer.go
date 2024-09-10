@@ -62,7 +62,4 @@ type Bridge struct {
 
 	// ping http default '40s'
 	Ping string `json:"ping"`
-
-	// http client header
-	Header map[string][]string `json:"header"`
 }
