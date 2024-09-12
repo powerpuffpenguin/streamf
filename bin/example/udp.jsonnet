@@ -6,9 +6,13 @@ local server = {
     {
       tag: 'google-dns',
       timeout: '200ms',
-      // url: 'basic://127.0.0.1:9001',
       url: 'basic://8.8.8.8:53',
       network: 'udp',
+      udp: {
+        frame: 16,
+        timeout: '60s',
+        size: 1500,
+      },
     },
   ],
   listener: [
@@ -41,6 +45,11 @@ local proxy = {
       dialer: {
         tag: 'udp-over-tcp',
         close: '1s',
+      },
+      udp: {
+        frame: 16,
+        timeout: '60s',
+        size: 1500,
       },
     },
   ],

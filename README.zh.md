@@ -14,6 +14,7 @@ index:
   * [pipe](#pipe)
   * [portal-bridge](#portal-bridge)
   * [http-portal-bridge](#http-portal-bridge)
+  * [udp-over-tcp](#udp-over-tcp)
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
@@ -530,6 +531,77 @@ local portal = {
 
 ```
 curl http://127.0.0.1:4000 http://127.0.0.1:4001 http://127.0.0.1:4002
+```
+
+# udp-over-tcp
+
+從 v0.0.4 開始 basic 的 listener/dialer 支持 udp，這個功能用於實現 udp over tcp。這在某些時候是有用的，例如防火牆阻擋了 udp，或者 udp 被限制了速度，這時可以使用此功能來用 tcp 傳輸 udp 數據，但是注意這會降低原本 udp 程序的傳輸效率
+
+```
+// 這裏演示了如何實現 udp over tcp
+
+// 這是伺服器上的配置，從tcp解析出udp，傳輸到目的服務
+local server = {
+  dialer: [
+    {
+      tag: 'google-dns',
+      timeout: '200ms',
+      url: 'basic://8.8.8.8:53',
+      network: 'udp',
+      udp: {
+        frame: 16,
+        timeout: '60s',
+        size: 1500,
+      },
+    },
+  ],
+  listener: [
+    {
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+      dialer: {
+        tag: 'google-dns',
+        close: '1s',
+      },
+    },
+  ],
+};
+
+// 這是一個反向代理。它接收udp，將其打包，並使用tcp傳輸到伺服器。
+local proxy = {
+  dialer: [
+    {
+      tag: 'udp-over-tcp',
+      timeout: '200ms',
+      url: 'basic://',
+      network: 'pipe',
+      addr: 'streamf/pipe.socket',
+    },
+  ],
+  listener: [
+    {
+      network: 'udp',
+      addr: ':4000',
+      dialer: {
+        tag: 'udp-over-tcp',
+        close: '1s',
+      },
+      udp: {
+        frame: 16,
+        timeout: '60s',
+        size: 1500,
+      },
+    },
+  ],
+};
+
+{
+  dialer: server.dialer + proxy.dialer,
+  listener: server.listener + proxy.listener,
+  logger: {
+    source: true,
+  },
+}
 ```
 
 # logger
