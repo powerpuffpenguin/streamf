@@ -14,8 +14,10 @@ type Config struct {
 	Listener []*Listener `json:"listener"`
 	// Outgoing traffic, how to connect to the remote end
 	Dialer []*Dialer `json:"dialer"`
-	// Outgoing traffic, how to connect to the remote end
+	// A reverse bridge
 	Bridge []*Bridge `json:"bridge"`
+	// udp forward
+	UDP []*UDPForward `json:"udp"`
 }
 
 func (c *Config) Load(filename string) (e error) {

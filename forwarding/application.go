@@ -9,6 +9,7 @@ import (
 	"github.com/powerpuffpenguin/streamf/config"
 	"github.com/powerpuffpenguin/streamf/dialer"
 	"github.com/powerpuffpenguin/streamf/internal/network"
+	"github.com/powerpuffpenguin/streamf/internal/udp"
 	"github.com/powerpuffpenguin/streamf/listener"
 	"github.com/powerpuffpenguin/streamf/pool"
 )
@@ -17,6 +18,7 @@ type Application struct {
 	bridges   []bridge.Bridge
 	listeners []listener.Listener
 	dialers   map[string]dialer.Dialer
+	udps      []*udp.UDP
 	log       *slog.Logger
 }
 
@@ -25,22 +27,44 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 	if e != nil {
 		return
 	}
+	app, bridges, dialers, listeners, udps, e := newApplication(log, conf)
+	if e != nil {
+		for _, d := range dialers {
+			d.Close()
+		}
+		for _, b := range bridges {
+			b.Close()
+		}
+		for _, l := range listeners {
+			l.Close()
+		}
+		for _, u := range udps {
+			u.Close()
+		}
+	}
+	return
+}
+func newApplication(log *slog.Logger, conf *config.Config) (app *Application,
+	bridges []bridge.Bridge,
+	dialers map[string]dialer.Dialer,
+	listeners []listener.Listener,
+	udps []*udp.UDP,
+	e error) {
+	bridges = make([]bridge.Bridge, 0, len(conf.Bridge))
+	dialers = make(map[string]dialer.Dialer, len(conf.Dialer))
+	listeners = make([]listener.Listener, 0, len(conf.Listener))
+	udps = make([]*udp.UDP, 0, len(conf.UDP))
 	var (
-		bridges   = make([]bridge.Bridge, 0, len(conf.Bridge))
-		b         bridge.Bridge
-		tag       string
-		dialers   = make(map[string]dialer.Dialer, len(conf.Dialer))
-		d         dialer.Dialer
-		exists    bool
-		listeners = make([]listener.Listener, 0, len(conf.Listener))
-		l         listener.Listener
-		pool      = pool.New(&conf.Pool)
-		nk        = network.New()
+		tag    string
+		exists bool
+		pool   = pool.New(&conf.Pool)
+		nk     = network.New()
 	)
 	app = &Application{
 		log: log,
 	}
 	api := app.api()
+	var d dialer.Dialer
 	for _, opts := range conf.Dialer {
 		tag = opts.Tag
 		if _, exists = dialers[tag]; exists {
@@ -50,45 +74,38 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 		}
 		d, e = dialer.New(nk, log, pool, opts)
 		if e != nil {
-			for _, d = range dialers {
-				d.Close()
-			}
 			return
 		}
 		dialers[opts.Tag] = d
 	}
+	var b bridge.Bridge
 	for _, opts := range conf.Bridge {
 		b, e = bridge.New(nk, log, pool, dialers, opts)
 		if e != nil {
-			for _, d = range dialers {
-				d.Close()
-			}
-			for _, b := range bridges {
-				b.Close()
-			}
 			return
 		}
 		bridges = append(bridges, b)
 	}
+	var l listener.Listener
 	for _, opts := range conf.Listener {
 		l, e = listener.New(nk, log, pool, dialers, api, opts)
 		if e != nil {
-			for _, b := range bridges {
-				b.Close()
-			}
-			for _, d = range dialers {
-				d.Close()
-			}
-			for _, l = range listeners {
-				l.Close()
-			}
 			return
 		}
 		listeners = append(listeners, l)
 	}
+	var u *udp.UDP
+	for _, opts := range conf.UDP {
+		u, e = udp.New(log, opts)
+		if e != nil {
+			return
+		}
+		udps = append(udps, u)
+	}
 	app.dialers = dialers
 	app.bridges = bridges
 	app.listeners = listeners
+	app.udps = udps
 	return
 }
 func (a *Application) Serve() {
