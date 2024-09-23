@@ -167,6 +167,7 @@ func newRemoteConn(udp *UDP, conn *net.UDPConn, key string, addr *net.UDPAddr) (
 			for {
 				select {
 				case <-udp.done:
+					c.Close()
 					return
 				case <-c.done:
 					return
