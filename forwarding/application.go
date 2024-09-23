@@ -109,24 +109,18 @@ func newApplication(log *slog.Logger, conf *config.Config) (app *Application,
 	return
 }
 func (a *Application) Serve() {
-	nb := len(a.bridges)
-	if nb == 0 {
-		serve(a.listeners)
-		return
-	}
-	nl := len(a.listeners)
-	if nl == 0 {
-		serve(a.bridges)
-		return
-	}
-
 	var wait sync.WaitGroup
-	wait.Add(nb + nl)
 	for _, item := range a.bridges {
+		wait.Add(1)
 		go serveWait(&wait, item)
 	}
 	for _, item := range a.listeners {
+		wait.Add(1)
 		go serveWait(&wait, item)
+	}
+	for _, udp := range a.udps {
+		wait.Add(1)
+		go serveWait(&wait, udp)
 	}
 	wait.Wait()
 }
@@ -138,29 +132,4 @@ type iserve interface {
 func serveWait(wait *sync.WaitGroup, item iserve) {
 	defer wait.Done()
 	item.Serve()
-}
-func serve[T iserve](items []T) {
-	n := len(items)
-	switch n {
-	case 0:
-	case 1:
-		items[0].Serve()
-	case 2:
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			items[0].Serve()
-		}()
-		items[1].Serve()
-		<-done
-	default:
-		var wait sync.WaitGroup
-		n--
-		for i := 0; i < n; i++ {
-			wait.Add(1)
-			go serveWait(&wait, items[i])
-		}
-		items[n].Serve()
-		wait.Wait()
-	}
 }
