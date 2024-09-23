@@ -15,6 +15,7 @@ index:
   * [portal-bridge](#portal-bridge)
   * [http-portal-bridge](#http-portal-bridge)
   * [udp-over-tcp](#udp-over-tcp)
+  * [udp](#udp)
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
@@ -602,6 +603,26 @@ local proxy = {
   },
 }
 
+```
+
+# udp
+Starting from v0.0.5, udp array is supported to specify a set of udp port mappings.
+
+```
+{
+    udp:[
+        {
+            // udp listen host:port
+            listen:":1053",
+            // remote target addr
+            to:"8.8.8.8:53",
+            // udp max frame length, default 1024*2
+            size:1500,
+            // udp timeout, default 3m
+            timeout:"3m",
+        },
+    ],
+}
 ```
 
 # logger

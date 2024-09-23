@@ -11,6 +11,8 @@ import (
 )
 
 type UDP struct {
+	tag     string
+	listen  string
 	c       *net.UDPConn
 	to      *net.UDPAddr
 	timeout time.Duration
@@ -64,7 +66,9 @@ func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 	}
 	log.Info(`udp forward`, `timeout`, timeout, `size`, size)
 	u = &UDP{
+		tag:     tag,
 		c:       c,
+		listen:  opts.Listen,
 		to:      to,
 		timeout: timeout,
 		size:    size,
@@ -73,6 +77,15 @@ func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 		log:     log,
 	}
 	return
+}
+func (u *UDP) Info() any {
+	return map[string]any{
+		`tag`:     u.tag,
+		`listen`:  u.listen,
+		`to`:      u.to.String(),
+		`timeout`: u.timeout.String(),
+		`size`:    u.size,
+	}
 }
 func (u *UDP) Serve() (e error) {
 	var (

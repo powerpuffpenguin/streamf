@@ -39,6 +39,11 @@ func (a *Application) api() []httpmux.ApiHandler {
 		},
 		{
 			Method:  []string{http.MethodGet},
+			Path:    `/udp`,
+			Handler: a.apiUDP,
+		},
+		{
+			Method:  []string{http.MethodGet},
 			Path:    `/runtime`,
 			Handler: a.apiRuntime,
 		},
@@ -64,6 +69,12 @@ func (a *Application) apiApplication(w http.ResponseWriter, r *http.Request) {
 		items = append(items, item.Info())
 	}
 	m[`bridges`] = items
+
+	items = make([]any, 0, len(a.udps))
+	for _, item := range a.udps {
+		items = append(items, item.Info())
+	}
+	m[`udps`] = items
 
 	jw := json.NewEncoder(w)
 	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
@@ -99,6 +110,18 @@ func (a *Application) apiBridge(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
 	items := make([]any, 0, len(a.bridges))
 	for _, item := range a.bridges {
+		items = append(items, item.Info())
+	}
+	jw := json.NewEncoder(w)
+	if beauty := r.URL.Query().Get(`beauty`); beauty == `1` || beauty == `true` {
+		jw.SetIndent("", "\t")
+	}
+	jw.Encode(items)
+}
+func (a *Application) apiUDP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
+	items := make([]any, 0, len(a.udps))
+	for _, item := range a.udps {
 		items = append(items, item.Info())
 	}
 	jw := json.NewEncoder(w)
@@ -148,6 +171,7 @@ func (a *Application) apiRoot(w http.ResponseWriter, r *http.Request) {
 	<li><a href="listener?beauty=1">listener</a></li>
 	<li><a href="dialer?beauty=1">dialer</a></li>
 	<li><a href="bridge?beauty=1">bridge</a></li>
+	<li><a href="udp?beauty=1">udp</a></li>
 	<li><a href="runtime?beauty=1">runtime</a></li>
 	</ul>
 </p>
