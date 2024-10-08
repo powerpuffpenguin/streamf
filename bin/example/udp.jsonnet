@@ -14,6 +14,8 @@
   ],
   udp: [
     {
+      // "udp" "udp4" "udp6"
+      network:"udp",
       // udp listen host:port
       listen: ':1053',
       // remote target addr
