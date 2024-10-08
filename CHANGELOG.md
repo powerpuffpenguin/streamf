@@ -1,3 +1,12 @@
+# v0.0.6
+
+* udp listener support network "udp" or "udp4" or "udp6"
+* tcp listener support network "tcp" or "tcp4" or "tcp6"
+
+
+# v0.0.5
+* support udp forwarding
+
 # v0.0.4
 
 * http/websocket dialer header
