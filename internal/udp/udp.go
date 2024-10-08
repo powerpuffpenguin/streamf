@@ -28,19 +28,23 @@ type UDP struct {
 
 func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 	tag := opts.Tag
+	network := opts.Network
+	if network == `` {
+		network = `udp`
+	}
 	if tag == `` {
-		tag = `udp ` + opts.Listen + ` -> ` + opts.To
+		tag = network + ` ` + opts.Listen + ` -> ` + opts.To
 	}
 	log = log.With(
 		`tag`, tag,
 		`listener`, opts.Listen,
 		`to`, opts.To)
-	addr, e := net.ResolveUDPAddr(`udp`, opts.Listen)
+	addr, e := net.ResolveUDPAddr(network, opts.Listen)
 	if e != nil {
 		log.Error(`listen udp fial`, `error`, e)
 		return
 	}
-	c, e := net.ListenUDP(`udp`, addr)
+	c, e := net.ListenUDP(network, addr)
 	if e != nil {
 		log.Error(`listen udp fial`, `error`, e)
 		return

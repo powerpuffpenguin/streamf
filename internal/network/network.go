@@ -68,12 +68,14 @@ type addrListener struct {
 func (a *addrListener) Addr() net.Addr {
 	return a.addr
 }
-func (n *Network) ListenUdp(address string, opts *config.UDP, pool *pool.Pool) (l net.Listener, e error) {
-	return newUdpListener(address, opts, pool)
+func (n *Network) ListenUdp(network, address string, opts *config.UDP, pool *pool.Pool) (l net.Listener, e error) {
+	return newUdpListener(network, address, opts, pool)
 }
 func (n *Network) Listen(network, address string) (l net.Listener, e error) {
 	switch network {
 	case `tcp`:
+	case `tcp4`:
+	case `tcp6`:
 	case `pipe`:
 		return n.listenPipe(address)
 	case `unix`:

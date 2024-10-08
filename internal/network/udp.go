@@ -31,8 +31,8 @@ type udpListener struct {
 	close chan *udpToTcp
 }
 
-func newUdpListener(address string, opts *config.UDP, pool *pool.Pool) (l *udpListener, e error) {
-	addr, e := net.ResolveUDPAddr(`udp`, address)
+func newUdpListener(network, address string, opts *config.UDP, pool *pool.Pool) (l *udpListener, e error) {
+	addr, e := net.ResolveUDPAddr(network, address)
 	if e != nil {
 		return
 	}
@@ -54,7 +54,7 @@ func newUdpListener(address string, opts *config.UDP, pool *pool.Pool) (l *udpLi
 	if frame < 1 {
 		frame = 16
 	}
-	ul, e := net.ListenUDP("udp", addr)
+	ul, e := net.ListenUDP(network, addr)
 	if e != nil {
 		return
 	}
