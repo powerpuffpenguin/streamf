@@ -9,6 +9,8 @@ type UDPForward struct {
 	Listen string `json:"listen"`
 	// remote target addr
 	To string `json:"to"`
+	// "udp" "udp4" "udp6"
+	ToNetwork string `json:"toNetwork"`
 	// udp max frame length, default 1024*2
 	Size int `json:"size"`
 	// udp timeout, default 3m

@@ -53,7 +53,7 @@ func newUdpDialer(
 	}
 
 	var (
-		network = `tcp`
+		network = `udp`
 		addr    = u.Host
 		query   url.Values
 	)
@@ -109,11 +109,11 @@ func (u *udpDialer) Tag() string {
 	return u.remoteAddr.Dialer
 }
 func (u *udpDialer) Connect(ctx context.Context) (conn *Conn, e error) {
-	addr, e := net.ResolveUDPAddr(`udp`, u.remoteAddr.Addr)
+	addr, e := net.ResolveUDPAddr(u.remoteAddr.Network, u.remoteAddr.Addr)
 	if e != nil {
 		return
 	}
-	c, e := net.DialUDP("udp", nil, addr)
+	c, e := net.DialUDP(u.remoteAddr.Network, nil, addr)
 	if e != nil {
 		return
 	}

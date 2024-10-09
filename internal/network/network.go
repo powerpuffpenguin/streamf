@@ -126,6 +126,8 @@ func (n *Network) Dialer(network string, addr string, cfg *tls.Config) (dialer D
 		n.pipeList.PushBack(dialer)
 		return
 	case `tcp`:
+	case `tcp4`:
+	case `tcp6`:
 	case `unix`:
 		if runtime.GOOS != `linux` {
 			e = ErrNetworkUnix

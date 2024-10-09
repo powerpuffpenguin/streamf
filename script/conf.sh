@@ -1,7 +1,7 @@
 Target="streamf"
 Docker="king011/streamf"
 Dir=$(cd "$(dirname $BASH_SOURCE)/.." && pwd)
-Version="v0.0.6"
+Version="v0.0.7"
 Platforms=(
     darwin/amd64
     windows/amd64

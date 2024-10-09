@@ -49,7 +49,7 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, opts *config.Di
 	case HttpTls:
 		dialer, e = newHttpDialer(nk, log, opts, u, true)
 	case Basic:
-		if opts.Network == `udp` {
+		if opts.Network == `udp` || opts.Network == `udp4` || opts.Network == `udp6` {
 			dialer, e = newUdpDialer(nk, log, opts, u, pool)
 		} else {
 			dialer, e = newBasicDialer(nk, log, opts, u, false)

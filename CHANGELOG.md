@@ -1,3 +1,8 @@
+# v0.0.7
+
+* udp dialer support network "udp" or "udp4" or "udp6"
+* tcp dialer support network "tcp" or "tcp4" or "tcp6"
+
 # v0.0.6
 
 * udp listener support network "udp" or "udp4" or "udp6"

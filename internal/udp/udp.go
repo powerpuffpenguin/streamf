@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"errors"
 	"log/slog"
 	"net"
 	"sync"
@@ -11,10 +12,12 @@ import (
 )
 
 type UDP struct {
-	tag     string
-	listen  string
-	c       *net.UDPConn
-	to      *net.UDPAddr
+	tag       string
+	listen    string
+	c         *net.UDPConn
+	toNetwork string
+	to        string
+
 	timeout time.Duration
 	size    int
 	mutex   sync.Mutex
@@ -31,9 +34,19 @@ func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 	network := opts.Network
 	if network == `` {
 		network = `udp`
+	} else if network != `udp` && network != `udp4` && network != `udp6` {
+		e = errors.New(`network not supported: ` + network)
+		return
+	}
+	toNetwork := opts.ToNetwork
+	if toNetwork == `` {
+		toNetwork = `udp`
+	} else if toNetwork != `udp` && toNetwork != `udp4` && toNetwork != `udp6` {
+		e = errors.New(`network not supported: ` + toNetwork)
+		return
 	}
 	if tag == `` {
-		tag = network + ` ` + opts.Listen + ` -> ` + opts.To
+		tag = network + ` ` + opts.Listen + ` -> ` + toNetwork + ` ` + opts.To
 	}
 	log = log.With(
 		`tag`, tag,
@@ -45,11 +58,6 @@ func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 		return
 	}
 	c, e := net.ListenUDP(network, addr)
-	if e != nil {
-		log.Error(`listen udp fial`, `error`, e)
-		return
-	}
-	to, e := net.ResolveUDPAddr(`udp`, opts.To)
 	if e != nil {
 		log.Error(`listen udp fial`, `error`, e)
 		return
@@ -70,15 +78,16 @@ func New(log *slog.Logger, opts *config.UDPForward) (u *UDP, e error) {
 	}
 	log.Info(`udp forward`, `timeout`, timeout, `size`, size)
 	u = &UDP{
-		tag:     tag,
-		c:       c,
-		listen:  opts.Listen,
-		to:      to,
-		timeout: timeout,
-		size:    size,
-		keys:    make(map[string]*remoteConn),
-		done:    make(chan struct{}),
-		log:     log,
+		tag:       tag,
+		c:         c,
+		listen:    opts.Listen,
+		to:        opts.To,
+		toNetwork: opts.ToNetwork,
+		timeout:   timeout,
+		size:      size,
+		keys:      make(map[string]*remoteConn),
+		done:      make(chan struct{}),
+		log:       log,
 	}
 	return
 }
@@ -86,7 +95,7 @@ func (u *UDP) Info() any {
 	return map[string]any{
 		`tag`:     u.tag,
 		`listen`:  u.listen,
-		`to`:      u.to.String(),
+		`to`:      u.to,
 		`timeout`: u.timeout.String(),
 		`size`:    u.size,
 	}
@@ -100,6 +109,7 @@ func (u *UDP) Serve() (e error) {
 		c    *remoteConn
 		ok   bool
 		conn *net.UDPConn
+		to   *net.UDPAddr
 	)
 	for {
 		n, addr, e = u.c.ReadFromUDP(b)
@@ -115,7 +125,12 @@ func (u *UDP) Serve() (e error) {
 				continue
 			}
 		} else {
-			conn, e = net.DialUDP(`udp`, nil, u.to)
+			to, e = net.ResolveUDPAddr(u.toNetwork, u.to)
+			if e != nil {
+				u.log.Warn("ResolveUDPAddr fail", `error`, e)
+				continue
+			}
+			conn, e = net.DialUDP(u.toNetwork, nil, to)
 			if e != nil {
 				u.log.Warn("DialUDP fail", `error`, e)
 				continue
