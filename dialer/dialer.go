@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	Socks        = `socks`
 	Websocket    = `ws`
 	WebsocketTls = `wss`
 	Http         = `http`
@@ -40,6 +41,8 @@ func New(nk *network.Network, log *slog.Logger, pool *pool.Pool, opts *config.Di
 		return
 	}
 	switch u.Scheme {
+	case Socks:
+		dialer, e = newSocksDialer(log, opts, u)
 	case Websocket:
 		dialer, e = newWebsocketDialer(nk, log, opts, u, false, pool)
 	case WebsocketTls:

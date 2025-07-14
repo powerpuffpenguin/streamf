@@ -11,6 +11,7 @@ type Dialer struct {
 	//  * "wss://host/path"
 	//  * "http://host/path"
 	//  * "https://host/path"
+	//  * "socks://host:port"
 	//  * "basic://host:port"
 	//  * "basic+tls://host:port"
 	URL string `json:"url"`
@@ -37,6 +38,8 @@ type Dialer struct {
 
 	// udp settings
 	UDP UDP `json:"udp"`
+	// Socks settings
+	Socks Socks `json:"socks"`
 }
 type Bridge struct {
 	Tag string `json:"tag"`
@@ -65,4 +68,7 @@ type Bridge struct {
 
 	// ping http default '40s'
 	Ping string `json:"ping"`
+
+	// Socks settings
+	Socks Socks `json:"socks"`
 }

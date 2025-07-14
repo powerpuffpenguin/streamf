@@ -1,3 +1,7 @@
+# v0.0.8
+
+* dialer/bridge support socks5
+
 # v0.0.7
 
 * udp dialer support network "udp" or "udp4" or "udp6"
