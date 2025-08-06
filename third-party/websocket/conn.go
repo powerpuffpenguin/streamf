@@ -458,7 +458,9 @@ func (c *Conn) WriteControl(messageType int, data []byte, deadline time.Time) er
 	timer := time.NewTimer(d)
 	select {
 	case <-c.mu:
-		timer.Stop()
+		if !timer.Stop() {
+			<-timer.C
+		}
 	case <-timer.C:
 		return errWriteTimeout
 	}

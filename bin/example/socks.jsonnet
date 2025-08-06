@@ -1,6 +1,6 @@
-// This is an example of port forwarding
+// This is an example of socks5 dialer
 {
-  // Set a basic forwarding target
+  // Set socks5 dialer
   dialer: [
     {
       // Use this tag in listener to specify dialer
@@ -21,13 +21,12 @@
     {
       network: 'tcp',
       addr: ':4000',
-      dialer: {
-        // Forward to the dialer with tag 'tcp'
-        tag: 'socks',
-        // After one end of the connection is disconnected, wait for one second before closing the other end
-        //  (waiting for untransmitted data to continue transmitting)
-        close: '1s',
-      },
+      router: [
+        {
+          tag: 'socks',
+          close: '1s',
+        },
+      ],
     },
   ],
 }

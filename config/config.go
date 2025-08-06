@@ -12,6 +12,8 @@ type Config struct {
 	Pool   Pool   `json:"pool"`
 	// Listener to receive incoming traffic
 	Listener []*Listener `json:"listener"`
+	// The sniproxy listener will forward traffic based on sni
+	SNIProxy []*SNIProxy `json:"sniproxy"`
 	// Outgoing traffic, how to connect to the remote end
 	Dialer []*Dialer `json:"dialer"`
 	// A reverse bridge

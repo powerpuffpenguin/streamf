@@ -12,11 +12,13 @@ import (
 	"github.com/powerpuffpenguin/streamf/internal/udp"
 	"github.com/powerpuffpenguin/streamf/listener"
 	"github.com/powerpuffpenguin/streamf/pool"
+	"github.com/powerpuffpenguin/streamf/sniproxy"
 )
 
 type Application struct {
 	bridges   []bridge.Bridge
 	listeners []listener.Listener
+	sniproxys []*sniproxy.Listener
 	dialers   map[string]dialer.Dialer
 	udps      []*udp.UDP
 	log       *slog.Logger
@@ -27,7 +29,7 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 	if e != nil {
 		return
 	}
-	app, bridges, dialers, listeners, udps, e := newApplication(log, conf)
+	app, bridges, dialers, listeners, sniproxys, udps, e := newApplication(log, conf)
 	if e != nil {
 		for _, d := range dialers {
 			d.Close()
@@ -36,6 +38,9 @@ func NewApplication(conf *config.Config) (app *Application, e error) {
 			b.Close()
 		}
 		for _, l := range listeners {
+			l.Close()
+		}
+		for _, l := range sniproxys {
 			l.Close()
 		}
 		for _, u := range udps {
@@ -48,6 +53,7 @@ func newApplication(log *slog.Logger, conf *config.Config) (app *Application,
 	bridges []bridge.Bridge,
 	dialers map[string]dialer.Dialer,
 	listeners []listener.Listener,
+	sniproxys []*sniproxy.Listener,
 	udps []*udp.UDP,
 	e error) {
 	bridges = make([]bridge.Bridge, 0, len(conf.Bridge))
@@ -94,6 +100,14 @@ func newApplication(log *slog.Logger, conf *config.Config) (app *Application,
 		}
 		listeners = append(listeners, l)
 	}
+	var sni *sniproxy.Listener
+	for _, opts := range conf.SNIProxy {
+		sni, e = sniproxy.New(nk, log, pool, dialers, opts)
+		if e != nil {
+			return
+		}
+		sniproxys = append(sniproxys, sni)
+	}
 	var u *udp.UDP
 	for _, opts := range conf.UDP {
 		u, e = udp.New(log, opts)
@@ -105,18 +119,23 @@ func newApplication(log *slog.Logger, conf *config.Config) (app *Application,
 	app.dialers = dialers
 	app.bridges = bridges
 	app.listeners = listeners
+	app.sniproxys = sniproxys
 	app.udps = udps
 	return
 }
 func (a *Application) Serve() {
 	var wait sync.WaitGroup
-	for _, item := range a.bridges {
+	for _, bridge := range a.bridges {
 		wait.Add(1)
-		go serveWait(&wait, item)
+		go serveWait(&wait, bridge)
 	}
-	for _, item := range a.listeners {
+	for _, listener := range a.listeners {
 		wait.Add(1)
-		go serveWait(&wait, item)
+		go serveWait(&wait, listener)
+	}
+	for _, sniproxy := range a.sniproxys {
+		wait.Add(1)
+		go serveWait(&wait, sniproxy)
 	}
 	for _, udp := range a.udps {
 		wait.Add(1)
