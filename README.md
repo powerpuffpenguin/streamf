@@ -782,5 +782,5 @@ local auth = [
 ```
 docker run \
   -v Your_Configure_Path:/data/streamf.jsonnet:ro \
-  -d king011/streamf:v0.0.1
+  -d king011/streamf
 ```
