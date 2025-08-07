@@ -12,14 +12,16 @@ import (
 )
 
 type SocksDialer struct {
+	network, addr string
+
 	log        *slog.Logger
 	done       chan struct{}
 	closed     uint32
 	remoteAddr RemoteAddr
-	connect    string
-	timeout    time.Duration
-	retry      int
-	rawDialer  proxy.ContextDialer
+
+	timeout   time.Duration
+	retry     int
+	rawDialer proxy.ContextDialer
 }
 
 func newSocksDialer(log *slog.Logger, opts *config.Dialer, u *url.URL) (dialer *SocksDialer, e error) {
@@ -82,17 +84,20 @@ func newSocksDialer(log *slog.Logger, opts *config.Dialer, u *url.URL) (dialer *
 		`timeout`, timeout,
 		`connect`, opts.Socks.Connect,
 	)
+
 	dialer = &SocksDialer{
+		network: network,
+		addr:    addr,
+
 		log:  log,
 		done: make(chan struct{}),
 		remoteAddr: RemoteAddr{
 			Dialer:  opts.Tag,
 			Network: `tcp`,
-			Addr:    addr,
+			Addr:    opts.Socks.Connect,
 			Secure:  false,
 			URL:     opts.URL,
 		},
-		connect:   opts.Socks.Connect,
 		timeout:   timeout,
 		retry:     opts.Retry,
 		rawDialer: rawDialer.(proxy.ContextDialer),
@@ -102,11 +107,11 @@ func newSocksDialer(log *slog.Logger, opts *config.Dialer, u *url.URL) (dialer *
 func (d *SocksDialer) Info() any {
 	return map[string]any{
 		`tag`:     d.remoteAddr.Dialer,
-		`network`: d.remoteAddr.Network,
-		`addr`:    d.remoteAddr.Addr,
+		`network`: d.network,
+		`addr`:    d.addr,
 		`url`:     d.remoteAddr.URL,
 
-		`connect`: d.connect,
+		`connect`: d.remoteAddr.Addr,
 
 		`timeout`: d.timeout.String(),
 		`retry`:   d.retry,
@@ -129,7 +134,7 @@ func (d *SocksDialer) Connect(ctx context.Context) (conn *Conn, e error) {
 		ctx, cancel = context.WithTimeout(ctx, d.timeout)
 		defer cancel()
 	}
-	c, e := d.rawDialer.DialContext(ctx, `tcp`, d.connect)
+	c, e := d.rawDialer.DialContext(ctx, d.remoteAddr.Network, d.remoteAddr.Addr)
 	if e == nil {
 		d.log.Debug(`socks connect success`)
 		conn = &Conn{

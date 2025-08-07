@@ -1,4 +1,4 @@
-FROM alpine:3.17.1
+FROM alpine:3.22
 
 RUN set -eux;  \
     apk add --no-cache tzdata
@@ -6,8 +6,9 @@ RUN set -eux;  \
 Copy root /
 
 RUN set -eux;  \
-    chown root.root  /usr/local/bin/docker-entrypoint.sh; \
-    chown root.root  /usr/local/bin/streamf; \
+    chown root:root  /usr/local/bin/docker-entrypoint.sh; \
+    chown root:root  /usr/local/bin/streamf; \
+    chown root:root  /usr/local/bin/docker-entrypoint.sh; \
     chmod a+x /usr/local/bin/docker-entrypoint.sh;
 
 WORKDIR /

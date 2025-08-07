@@ -85,6 +85,7 @@ func New(nk *network.Network, log *slog.Logger,
 			return
 		}
 		defDuration, e = time.ParseDuration(opts.Default.Close)
+
 		if e != nil {
 			e = nil
 			defDuration = time.Second
@@ -94,6 +95,10 @@ func New(nk *network.Network, log *slog.Logger,
 				`default`, duration,
 			)
 		}
+		log.Info(`sni default router`,
+			`dialer`, def.Tag(),
+			`close`, defDuration,
+		)
 	}
 	var (
 		fallback         dialer.Dialer
@@ -117,6 +122,10 @@ func New(nk *network.Network, log *slog.Logger,
 				`default`, duration,
 			)
 		}
+		log.Info(`sni fallback router`,
+			`dialer`, fallback.Tag(),
+			`close`, fallbackDuration,
+		)
 	}
 
 	var (
@@ -156,7 +165,10 @@ func New(nk *network.Network, log *slog.Logger,
 					dialer:   dialer,
 					duration: duration,
 				}
-				log.Info(`sni accuracy`, `value`, matcher.Value)
+				log.Info(`sni accuracy`,
+					`value`, matcher.Value,
+					`dialer`, dialer.Tag(),
+				)
 			case `prefix`:
 				order = append(order, orderMatcher{
 					dialer:   dialer,
@@ -164,7 +176,10 @@ func New(nk *network.Network, log *slog.Logger,
 					prefix:   true,
 					value:    matcher.Value,
 				})
-				log.Info(`sni prefix`, `value`, matcher.Value)
+				log.Info(`sni prefix`,
+					`value`, matcher.Value,
+					`dialer`, dialer.Tag(),
+				)
 			case `suffix`:
 				order = append(order, orderMatcher{
 					dialer:   dialer,
@@ -172,13 +187,19 @@ func New(nk *network.Network, log *slog.Logger,
 					prefix:   false,
 					value:    matcher.Value,
 				})
-				log.Info(`sni suffix`, `value`, matcher.Value)
+				log.Info(`sni suffix`,
+					`value`, matcher.Value,
+					`dialer`, dialer.Tag(),
+				)
 			case `regexp`:
 				r, err := regexp.Compile(matcher.Value)
 				if err != nil {
 					l.Close()
 					e = err
-					log.Error(`new regexp fail`, `error`, err)
+					log.Error(`new regexp fail`,
+						`error`, err,
+						`value`, matcher.Value,
+					)
 					return
 				}
 				reg = append(reg, regexpMatcher{
@@ -186,7 +207,10 @@ func New(nk *network.Network, log *slog.Logger,
 					duration: duration,
 					value:    r,
 				})
-				log.Info(`sni regexp`, `value`, matcher.Value)
+				log.Info(`sni regexp`,
+					`value`, matcher.Value,
+					`dialer`, dialer.Tag(),
+				)
 			}
 		}
 	}
@@ -293,7 +317,7 @@ func (l *Listener) serve(c net.Conn) {
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging fallback`, `dialer`, l.fallback.Tag(), `remote`, dst.RemoteAddr())
+			l.log.Info(`sni bridging fallback`, `dialer`, l.fallback.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -313,7 +337,7 @@ func (l *Listener) serve(c net.Conn) {
 			c.Close()
 			return
 		}
-		l.log.Info(`sni bridging accuracy`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+		l.log.Info(`sni bridging accuracy`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 		network.Bridging(&sniConn{
 			Conn:   c,
 			buffer: sniBuffer,
@@ -330,7 +354,7 @@ func (l *Listener) serve(c net.Conn) {
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging order`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+			l.log.Info(`sni bridging order`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -348,7 +372,7 @@ func (l *Listener) serve(c net.Conn) {
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging regexp`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+			l.log.Info(`sni bridging regexp`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -365,7 +389,7 @@ func (l *Listener) serve(c net.Conn) {
 			c.Close()
 			return
 		}
-		l.log.Info(`sni bridging default`, `dialer`, l.def.Tag(), `remote`, dst.RemoteAddr())
+		l.log.Info(`sni bridging default`, `dialer`, l.def.Tag(), `remote`, dst.RemoteAddr().Addr)
 		network.Bridging(&sniConn{
 			Conn:   c,
 			buffer: sniBuffer,
