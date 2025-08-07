@@ -15,7 +15,8 @@ index:
   * [portal-bridge](#portal-bridge)
   * [http-portal-bridge](#http-portal-bridge)
   * [udp-over-tcp](#udp-over-tcp)
-  * [udp](#udp)
+* [udp](#udp)
+* [sniproxy](#sniproxy)
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
@@ -622,6 +623,64 @@ Starting from v0.0.5, udp array is supported to specify a set of udp port mappin
             timeout:"3m",
         },
     ],
+}
+```
+
+# sniproxy
+Starting from v0.0.9, sniproxy is supported. It does not participate in TLS encryption and decryption. It reads the sni in the ClientHello from the client and then forwards the traffic to different backends according to the sni. This can provide a common connection entry for different TLS backends.
+
+Sniproxy also provides a fallback for transferring non-TLS or unknown TLS protocols to a fallback backend service.
+
+```
+{
+  sniproxy: [
+    // This listener receives tcp connections
+    {
+      network: 'tcp',
+      addr: ':443',
+      // Sniff sni timeout, Default 500ms
+      timeout: '500ms',
+      // Optionally dialer. for no matching SNI
+      default: {
+        tag: 'default',
+        close: '1s',
+      },
+      // Optionally dialer. for non-TLS/unknown-TLS
+      fallback: {
+        tag: 'fallback',
+        close: '1s',
+      },
+      // sni matching routes
+      router: [
+        {
+          matcher: [
+            {
+              // - 'accuracy' is matched first and must be unique. This is the default value and you don't need to explicitly define type
+              // - 'prefix' or 'suffix' will match the first matched route in the order configured after 'accuracy'
+              // - 'regexp' will be matched last
+              type: 'accuracy',
+              value: 'www.bing.com',
+            },
+          ],
+          dialer: {
+            tag: 'bing',
+            close: '1s',
+          },
+        },
+        {
+          matcher: [
+            {
+              value: 'www.google.com',
+            },
+          ],
+          dialer: {
+            tag: 'google',
+            close: '1s',
+          },
+        },
+      ],
+    },
+  ],
 }
 ```
 

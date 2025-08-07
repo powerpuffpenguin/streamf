@@ -15,7 +15,8 @@ index:
   * [portal-bridge](#portal-bridge)
   * [http-portal-bridge](#http-portal-bridge)
   * [udp-over-tcp](#udp-over-tcp)
-  * [udp](#udp)
+* [udp](#udp)
+* [sniproxy](#sniproxy)
 * [logger](#logger)
 * [pool](#pool)
 * [api](#api)
@@ -622,6 +623,64 @@ local proxy = {
             timeout:"3m",
         },
     ],
+}
+```
+
+# sniproxy
+從 v0.0.9 開始支持 sniproxy，它不會參與到 tls 加解密中去，它從客戶端讀取出 ClientHello 中的 sni，然後依據 sni 將流量原樣轉發到不同的後端。這可以爲不同 tls 後端提供一個共用的連接入口
+
+sniproxy 還提供了一個 fallback 用於將非 tls 或未知的 tls 協議傳輸到一個回退的後端服務
+
+```
+{
+  sniproxy: [
+    // This listener receives tcp connections
+    {
+      network: 'tcp',
+      addr: ':443',
+      // Sniff sni timeout, Default 500ms
+      timeout: '500ms',
+      // Optionally dialer. for no matching SNI
+      default: {
+        tag: 'default',
+        close: '1s',
+      },
+      // Optionally dialer. for non-TLS/unknown-TLS
+      fallback: {
+        tag: 'fallback',
+        close: '1s',
+      },
+      // sni matching routes
+      router: [
+        {
+          matcher: [
+            {
+              // - 'accuracy' is matched first and must be unique. This is the default value and you don't need to explicitly define type
+              // - 'prefix' or 'suffix' will match the first matched route in the order configured after 'accuracy'
+              // - 'regexp' will be matched last
+              type: 'accuracy',
+              value: 'www.bing.com',
+            },
+          ],
+          dialer: {
+            tag: 'bing',
+            close: '1s',
+          },
+        },
+        {
+          matcher: [
+            {
+              value: 'www.google.com',
+            },
+          ],
+          dialer: {
+            tag: 'google',
+            close: '1s',
+          },
+        },
+      ],
+    },
+  ],
 }
 ```
 

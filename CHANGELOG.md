@@ -1,3 +1,7 @@
+# v0.0.9
+
+* sniproxy
+
 # v0.0.8
 
 * dialer/bridge support socks5
