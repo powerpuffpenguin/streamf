@@ -1,11 +1,11 @@
 package sniproxy
 
 import (
-	"crypto/tls"
+	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
+	"regexp"
 	"sync/atomic"
 	"time"
 
@@ -16,7 +16,6 @@ import (
 )
 
 var ErrClosed = errors.New("listener already closed")
-var ErrGetSNI = errors.New("sniff sni fail")
 
 type Listener struct {
 	listener net.Listener
@@ -28,12 +27,18 @@ type Listener struct {
 	timeout time.Duration
 
 	tag, network, addr string
+
+	accuracy map[string]accuracyMatcher
+	order    []orderMatcher
+	regexp   []regexpMatcher
+
+	def, fallback                 dialer.Dialer
+	defDuration, fallbackDuration time.Duration
 }
 
 func New(nk *network.Network, log *slog.Logger,
 	pool *pool.Pool, dialers map[string]dialer.Dialer,
 	opts *config.SNIProxy) (listener *Listener, e error) {
-
 	l, e := nk.Listen(opts.Network, opts.Addr)
 	if e != nil {
 		log.Error(`new sniproxy listener fail`, `error`, e)
@@ -42,7 +47,7 @@ func New(nk *network.Network, log *slog.Logger,
 	addr := l.Addr()
 	tag := opts.Tag
 	if tag == `` {
-		tag = `basic ` + addr.Network() + `://` + addr.String()
+		tag = `sniproxy ` + addr.Network() + `://` + addr.String()
 	}
 	log = log.With(`sniproxy`, tag)
 
@@ -65,9 +70,126 @@ func New(nk *network.Network, log *slog.Logger,
 	log.Info(`new sniproxy listener`,
 		`network`, addr.Network(),
 		`addr`, addr.String(),
-		`sniff timeout`, duration,
+		`sniff-timeout`, duration,
 	)
+	var (
+		def         dialer.Dialer
+		defDuration time.Duration
+	)
+	if opts.Default.Tag != `` {
+		def = dialers[opts.Default.Tag]
+		if def == nil {
+			l.Close()
+			e = errors.New(`dialer not found: ` + opts.Default.Tag)
+			log.Error(`dialer not found`, `dialer`, opts.Default.Tag)
+			return
+		}
+		defDuration, e = time.ParseDuration(opts.Default.Close)
+		if e != nil {
+			e = nil
+			defDuration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, e,
+				`close`, opts.Default.Close,
+				`default`, duration,
+			)
+		}
+	}
+	var (
+		fallback         dialer.Dialer
+		fallbackDuration time.Duration
+	)
+	if opts.Fallback.Tag != `` {
+		fallback = dialers[opts.Fallback.Tag]
+		if fallback == nil {
+			l.Close()
+			e = errors.New(`dialer not found: ` + opts.Fallback.Tag)
+			log.Error(`dialer not found`, `dialer`, opts.Fallback.Tag)
+			return
+		}
+		fallbackDuration, e = time.ParseDuration(opts.Fallback.Close)
+		if e != nil {
+			e = nil
+			fallbackDuration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, e,
+				`close`, opts.Default.Close,
+				`default`, duration,
+			)
+		}
+	}
 
+	var (
+		accuracy = make(map[string]accuracyMatcher)
+		order    []orderMatcher
+		reg      []regexpMatcher
+	)
+	for _, router := range opts.SNIRouter {
+		dialer := dialers[router.Dialer.Tag]
+		if dialer == nil {
+			l.Close()
+			e = errors.New(`dialer not found: ` + router.Dialer.Tag)
+			log.Error(`dialer not found`, `dialer`, router.Dialer.Tag)
+			return
+		}
+		duration, e = time.ParseDuration(router.Dialer.Close)
+		if e != nil {
+			e = nil
+			duration = time.Second
+			log.Warn(`parse duration fail, used default close duration.`,
+				`error`, e,
+				`close`, router.Dialer.Close,
+				`default`, duration,
+			)
+		}
+
+		for _, matcher := range router.Matcher {
+			switch matcher.Type {
+			default:
+				if _, exists := accuracy[matcher.Value]; exists {
+					l.Close()
+					e = errors.New(`sni router repeat: ` + matcher.Value)
+					log.Error(`sni accuracy fail`, `error`, e)
+					return
+				}
+				accuracy[matcher.Value] = accuracyMatcher{
+					dialer:   dialer,
+					duration: duration,
+				}
+				log.Info(`sni accuracy`, `value`, matcher.Value)
+			case `prefix`:
+				order = append(order, orderMatcher{
+					dialer:   dialer,
+					duration: duration,
+					prefix:   true,
+					value:    matcher.Value,
+				})
+				log.Info(`sni prefix`, `value`, matcher.Value)
+			case `suffix`:
+				order = append(order, orderMatcher{
+					dialer:   dialer,
+					duration: duration,
+					prefix:   false,
+					value:    matcher.Value,
+				})
+				log.Info(`sni suffix`, `value`, matcher.Value)
+			case `regexp`:
+				r, err := regexp.Compile(matcher.Value)
+				if err != nil {
+					l.Close()
+					e = err
+					log.Error(`new regexp fail`, `error`, err)
+					return
+				}
+				reg = append(reg, regexpMatcher{
+					dialer:   dialer,
+					duration: duration,
+					value:    r,
+				})
+				log.Info(`sni regexp`, `value`, matcher.Value)
+			}
+		}
+	}
 	listener = &Listener{
 		listener: l,
 		pool:     pool,
@@ -79,6 +201,15 @@ func New(nk *network.Network, log *slog.Logger,
 		tag:     tag,
 		network: addr.Network(),
 		addr:    addr.String(),
+
+		accuracy: accuracy,
+		order:    order,
+		regexp:   reg,
+
+		def:              def,
+		fallback:         fallback,
+		defDuration:      defDuration,
+		fallbackDuration: fallbackDuration,
 	}
 	return
 }
@@ -96,7 +227,7 @@ func (l *Listener) Info() any {
 		`tag`:           l.tag,
 		`network`:       l.network,
 		`addr`:          l.addr,
-		`sniff timeout`: l.timeout,
+		`sniff-timeout`: l.timeout,
 	}
 }
 func (l *Listener) Serve() (e error) {
@@ -126,47 +257,148 @@ func (l *Listener) Serve() (e error) {
 		go l.serve(rw)
 	}
 }
-func (l *Listener) serve(src net.Conn) {
+func (l *Listener) serve(c net.Conn) {
 	timer := time.NewTimer(l.timeout)
+	var (
+		serverName string
+		sniBuffer  []byte
+		sniClosed  bool
+		sniError   error
+		done       = make(chan struct{})
+	)
+	go func() {
+		serverName, sniBuffer, sniClosed, sniError = sniffSNI(l.pool, c)
+		close(done)
+	}()
 
 	select {
-	// case <-c.mu:
-	// 	timer.Stop()
 	case <-l.close:
-
+		if !timer.Stop() {
+			<-timer.C
+		}
+		c.Close()
+		return
 	case <-timer.C:
 		l.log.Debug(`sniff timeout`)
-		src.Close()
+		c.Close()
+		return
+	case <-done:
+	}
+	if sniError != nil {
+		l.log.Warn(`get sni fail`, `error`, sniError)
+		if !sniClosed && l.fallback != nil {
+			dst, err := l.fallback.Connect(context.Background())
+			if err != nil {
+				l.log.Warn(`connect remote fail`, `error`, err)
+				c.Close()
+				return
+			}
+			l.log.Info(`sni bridging fallback`, `dialer`, l.fallback.Tag(), `remote`, dst.RemoteAddr())
+			network.Bridging(&sniConn{
+				Conn:   c,
+				buffer: sniBuffer,
+				pool:   l.pool,
+			}, dst.ReadWriteCloser, l.pool, l.fallbackDuration)
+			return
+		}
+		c.Close()
 		return
 	}
-	serverName, e := sniffSNI(src)
-	fmt.Println(`-----`, serverName, e)
+
+	// 優先匹配最精準的路由
+	if matcher, ok := l.accuracy[serverName]; ok {
+		dst, err := matcher.dialer.Connect(context.Background())
+		if err != nil {
+			l.log.Warn(`connect remote fail`, `error`, err)
+			c.Close()
+			return
+		}
+		l.log.Info(`sni bridging accuracy`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+		network.Bridging(&sniConn{
+			Conn:   c,
+			buffer: sniBuffer,
+			pool:   l.pool,
+		}, dst.ReadWriteCloser, l.pool, matcher.duration)
+		return
+	}
+	// 按順序匹配 前綴/後綴 路由
+	for _, matcher := range l.order {
+		if matcher.Match(serverName) {
+			dst, err := matcher.dialer.Connect(context.Background())
+			if err != nil {
+				l.log.Warn(`connect remote fail`, `error`, err)
+				c.Close()
+				return
+			}
+			l.log.Info(`sni bridging order`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+			network.Bridging(&sniConn{
+				Conn:   c,
+				buffer: sniBuffer,
+				pool:   l.pool,
+			}, dst.ReadWriteCloser, l.pool, matcher.duration)
+			return
+		}
+	}
+	// 最後匹配 最慢的 正則路由
+	for _, matcher := range l.regexp {
+		if matcher.Match(serverName) {
+			dst, err := matcher.dialer.Connect(context.Background())
+			if err != nil {
+				l.log.Warn(`connect remote fail`, `error`, err)
+				c.Close()
+				return
+			}
+			l.log.Info(`sni bridging regexp`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr())
+			network.Bridging(&sniConn{
+				Conn:   c,
+				buffer: sniBuffer,
+				pool:   l.pool,
+			}, dst.ReadWriteCloser, l.pool, matcher.duration)
+			return
+		}
+	}
+	// 默認路由
+	if l.def != nil {
+		dst, err := l.def.Connect(context.Background())
+		if err != nil {
+			l.log.Warn(`connect remote fail`, `error`, err)
+			c.Close()
+			return
+		}
+		l.log.Info(`sni bridging default`, `dialer`, l.def.Tag(), `remote`, dst.RemoteAddr())
+		network.Bridging(&sniConn{
+			Conn:   c,
+			buffer: sniBuffer,
+			pool:   l.pool,
+		}, dst.ReadWriteCloser, l.pool, l.defDuration)
+		return
+	}
+
+	// 沒有匹配路由
+	c.Close()
 }
 
-func sniffSNI(clientConn net.Conn) (string, error) {
-	tlsConfig := &tls.Config{
-		GetConfigForClient: func(info *tls.ClientHelloInfo) (*tls.Config, error) {
-			return nil, fmt.Errorf("SNI: %s", info.ServerName)
-		},
-	}
+type sniConn struct {
+	net.Conn
+	buffer []byte
+	n      int
+	pool   *pool.Pool
+}
 
-	tlsConn := tls.Server(clientConn, tlsConfig)
-	_ = tlsConn.Handshake()
-
-	var serverName string
-	err := tlsConn.Handshake()
-	if err != nil {
-		if tlsErr, ok := err.(net.Error); ok && tlsErr.Timeout() {
-			return "", err
+func (s *sniConn) Read(b []byte) (int, error) {
+	if s.buffer != nil {
+		if len(b) == 0 {
+			return s.Conn.Read(b)
 		}
-		if err.Error()[:5] == "SNI: " {
-			serverName = err.Error()[5:]
+		n := copy(b, s.buffer[s.n:])
+		s.n += n
+		if s.n >= len(s.buffer) {
+			if cap(s.buffer) == s.pool.Size() {
+				s.pool.Put(s.buffer)
+			}
+			s.buffer = nil
 		}
+		return n, nil
 	}
-
-	if serverName == "" {
-		return "", ErrGetSNI
-	}
-
-	return serverName, nil
+	return s.Conn.Read(b)
 }

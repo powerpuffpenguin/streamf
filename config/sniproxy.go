@@ -8,6 +8,9 @@ type SNIProxy struct {
 	// Sniff sni timeout, Default 500ms
 	Timeout string `json:"timeout"`
 
+	Default  ConnectDialer `json:"default"`
+	Fallback ConnectDialer `json:"fallback"`
+
 	SNIRouter []*SNIRouter `json:"router"`
 }
 type SNIRouter struct {

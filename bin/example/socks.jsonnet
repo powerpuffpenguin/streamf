@@ -9,10 +9,10 @@
       timeout: '200ms',
       // Connection URL, optional parameters network and addr override the addr in the URL
       url: 'socks://127.0.0.1:1081',
-      socks:{
+      socks: {
         // user:'',
         // password:'',
-        connect:'10.89.0.1:2004',
+        connect: '10.89.0.1:2004',
       },
     },
   ],
