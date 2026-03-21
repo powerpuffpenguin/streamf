@@ -77,6 +77,7 @@ func NewHttpListener(nk *network.Network,
 	dialers map[string]dialer.Dialer,
 	api []httpmux.ApiHandler,
 	opts *config.BasicListener, routers []*config.Router,
+	idleTimeout string,
 ) (listener *HttpListener, e error) {
 	var (
 		l      net.Listener
@@ -85,7 +86,7 @@ func NewHttpListener(nk *network.Network,
 	if opts.TLS.CertFile != `` && opts.TLS.KeyFile != `` {
 		secure = true
 	}
-	l, e = nk.Listen( opts.Network, opts.Addr)
+	l, e = nk.Listen(opts.Network, opts.Addr)
 	if e != nil {
 		log.Error(`new http listener fail`, `error`, e)
 		return
@@ -236,8 +237,27 @@ func NewHttpListener(nk *network.Network,
 		}
 	}
 	listener.server.Handler = mux
+
+	var timeout time.Duration
+	if idleTimeout == `` {
+		timeout = 3 * time.Minute
+	} else {
+		var err error
+		timeout, err = time.ParseDuration(idleTimeout)
+		if err != nil {
+			timeout = 3 * time.Minute
+			log.Warn(`parse duration fail, used default idle timeout duration.`,
+				`error`, err,
+				`timeout`, timeout,
+			)
+		} else if timeout < time.Second {
+			timeout = 3 * time.Minute
+		}
+	}
 	if !secure {
 		var http2Server http2.Server
+		http2Server.IdleTimeout = timeout
+
 		listener.server.Handler = h2c.NewHandler(mux, &http2Server)
 		e = http2.ConfigureServer(&listener.server, &http2Server)
 		if e != nil {
@@ -249,6 +269,10 @@ func NewHttpListener(nk *network.Network,
 			return
 		}
 	}
+	listener.server.ReadTimeout = 0
+	listener.server.WriteTimeout = 0
+	listener.server.ReadHeaderTimeout = 60 * time.Second
+	listener.server.IdleTimeout = timeout
 	return
 }
 func (l *HttpListener) access(r *http.Request, accessToken string) bool {

@@ -54,6 +54,8 @@ type Listener struct {
 	Mode string `json:"mode"`
 	// Specify forwarding destination in "basic" mode
 	Dialer ConnectDialer `json:"dialer"`
+	// http idle timeout default '180s'
+	IdleTimeout string `json:"idleTimeout"`
 	// Specify route for http mode
 	Router []*Router `json:"router"`
 	Portal Portal    `json:"portal"`

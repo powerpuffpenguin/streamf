@@ -37,7 +37,7 @@ func New(nk *network.Network, log *slog.Logger,
 			log.Error(`dialer not found`, `dialer`, opts.Dialer.Tag)
 		}
 	case Http:
-		l, e = NewHttpListener(nk, log, pool, dialers, api, &opts.BasicListener, opts.Router)
+		l, e = NewHttpListener(nk, log, pool, dialers, api, &opts.BasicListener, opts.Router, opts.IdleTimeout)
 	case Portal:
 		l, e = NewPortalListener(nk, log, &opts.BasicListener, &opts.Portal)
 	default:
