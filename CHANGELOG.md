@@ -1,3 +1,8 @@
+# v0.0.10
+
+* http server idle timeout (default '180s')
+* http dialer/bridge ping timeout (default '15s')
+
 # v0.0.9
 
 * sniproxy
