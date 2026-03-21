@@ -48,7 +48,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 			)
 		}
 	}
-	var ping time.Duration
+	var ping, pingTimeout time.Duration
 	if opts.Ping == `` {
 		ping = time.Second * 40
 	} else {
@@ -62,6 +62,21 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 			)
 		} else if ping < time.Second {
 			ping = 0
+		}
+	}
+	if opts.PingTimeout == `` {
+		pingTimeout = time.Second * 15
+	} else {
+		var err error
+		pingTimeout, err = time.ParseDuration(opts.Ping)
+		if err != nil {
+			pingTimeout = time.Second * 15
+			log.Warn(`parse duration fail, used default ping timeout duration.`,
+				`error`, err,
+				`pingTimeout`, pingTimeout,
+			)
+		} else if pingTimeout < time.Second {
+			pingTimeout = 0
 		}
 	}
 	method := strings.ToUpper(opts.Method)
@@ -120,6 +135,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 		`url`, opts.URL,
 		`timeout`, timeout,
 		`ping`, ping,
+		`pingTimeout`, pingTimeout,
 		`method`, method,
 	)
 	var header http.Header
@@ -155,6 +171,7 @@ func newHttpDialer(nk *network.Network, log *slog.Logger, opts *config.Dialer, u
 		retry:   opts.Retry,
 		client: &http.Client{
 			Transport: &http2.Transport{
+				PingTimeout:     pingTimeout,
 				ReadIdleTimeout: ping,
 				AllowHTTP:       !secure,
 				DialTLSContext: func(ctx context.Context, _, _ string, cfg *tls.Config) (net.Conn, error) {

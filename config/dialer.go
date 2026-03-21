@@ -30,8 +30,10 @@ type Dialer struct {
 	// Optional credentials, only valid for http protocol
 	Access string `jsong:"access"`
 
-	// ping http default '40s'
+	// http ping frame default '40s'
 	Ping string `json:"ping"`
+	// http ping frame timeout  default '15s'
+	PingTimeout string `json:"pingTimeout"`
 
 	// http client header
 	Header map[string][]string `json:"header"`
@@ -68,6 +70,8 @@ type Bridge struct {
 
 	// ping http default '40s'
 	Ping string `json:"ping"`
+	// http ping frame timeout  default '15s'
+	PingTimeout string `json:"pingTimeout"`
 
 	// Socks settings
 	Socks Socks `json:"socks"`
