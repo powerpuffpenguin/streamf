@@ -649,6 +649,16 @@ Starting with v0.0.8, dialer/bridge supports using socks5 for dialing, which fac
 },
 ```
 
+For clients like HTTP/WebSocket/TLS, directly specifying SOCKS5 for dialing is not supported. Furthermore, there are no plans to support this in the future because it would conflict with pipe/Unix (which does not support SOCKS5), breaking project consistency.
+
+However, with the powerful [pipe](#pipe) functionality, you can easily add SOCKS5 support to existing protocols:
+
+- First, create a listener/dialer using pipe.
+- The dialer connects to the original target via SOCKS5.
+- HTTP/WebSocket/TLS clients connect to the listener created in step 1 via pipe.
+
+This allows for highly flexible combinations of various scenarios, consistent with the design logic of this project (combining and converting various protocols), while considering the high efficiency of the pipe, its impact on performance is almost negligible.
+
 # sniproxy
 Starting from v0.0.9, sniproxy is supported. It does not participate in TLS encryption and decryption. It reads the sni in the ClientHello from the client and then forwards the traffic to different backends according to the sni. This can provide a common connection entry for different TLS backends.
 

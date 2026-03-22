@@ -648,6 +648,14 @@ local proxy = {
 },
 ```
 
+對於 http/websocket/tls 等客戶端不支持直接爲它們指定通過 socks5 進行撥號。並且將來也不打算支持，因爲這會和 pipe/unix 產生衝突(它們不能支持 socks5),這會破壞項目的自洽。
+
+但是通過強大的[pipe](#pipe)功能，你可以在現有協議下輕易的爲它們添加上 socks5 的支持:
+- 首先使用 pipe 創建一個 listener/dialer
+- dialer 通過 socks5 連接原本目標
+- http/websocket/tls 等客戶端通過 pipe 連接到 step 1 創建的 listener
+
+> 這樣你可以相當靈活的組合各種情況，並且和本專案的設計邏輯一致(組合轉換各種協議)，同時 pipe 想到高效它對性能是磨損幾乎可以忽略不計
 
 # sniproxy
 從 v0.0.9 開始支持 sniproxy，它不會參與到 tls 加解密中去，它從客戶端讀取出 ClientHello 中的 sni，然後依據 sni 將流量原樣轉發到不同的後端。這可以爲不同 tls 後端提供一個共用的連接入口
