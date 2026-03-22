@@ -16,6 +16,7 @@ index:
   * [http-portal-bridge](#http-portal-bridge)
   * [udp-over-tcp](#udp-over-tcp)
 * [udp](#udp)
+* [socks5](#socks5)
 * [sniproxy](#sniproxy)
 * [logger](#logger)
 * [pool](#pool)
@@ -200,9 +201,11 @@ curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 
 > Incoming and outgoing traffic can be http1.x, but http1.x does not support data streaming and may wait until the end of the request or response traffic transmission before transmitting to the peer. http1.x is generally not recommended.
 
-Starting from v0.0.3, websocket supports the **fast** attribute. If set to true, it will only use websocket to establish a connection and directly use tcp to transmit data after the connection is established.
+- Starting from v0.0.3, websocket supports the **fast** attribute. If set to true, it will only use websocket to establish a connection and directly use tcp to transmit data after the connection is established.
 
-Starting from v0.0.4, http/websocket dialer supports **header** attribute (map\[string\]\[\]string) for setting custom http header
+- Starting from v0.0.4, http/websocket dialer supports **header** attribute (map\[string\]\[\]string) for setting custom http header
+
+- Starting with v0.0.10, the HTTP/2 client supports `ping/pingTimeout` to enable ping packets for maintaining persistent connections (default 40s/15s). The HTTP/2 server supports `idleTimeout` to automatically clear idle connections (default 180s).
 
 # unix
 
@@ -624,6 +627,26 @@ Starting from v0.0.5, udp array is supported to specify a set of udp port mappin
         },
     ],
 }
+```
+
+# socks5
+
+Starting with v0.0.8, dialer/bridge supports using socks5 for dialing, which facilitates access to private networks via socks5. A slight modification to the original dialer/bridge configuration is required:
+
+```
+{
+  // Changing Scheme to socks specifies that socks5 should be used for dialing; the following is the address of the socks5 proxy server.
+  url: 'socks://127.0.0.1:1081',
+  //SOCKS5 configuration items
+  socks: {
+    // Socks5 username (leave blank if you don't have one).
+    // user:'',
+    // Socks5 password; leave blank if you don't have one.
+    // password:'',
+    // The final address to be connected to through the proxy
+    connect: '10.89.0.1:2004',
+  },
+},
 ```
 
 # sniproxy

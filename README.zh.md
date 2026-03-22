@@ -16,6 +16,7 @@ index:
   * [http-portal-bridge](#http-portal-bridge)
   * [udp-over-tcp](#udp-over-tcp)
 * [udp](#udp)
+* [socks5](#socks5)
 * [sniproxy](#sniproxy)
 * [logger](#logger)
 * [pool](#pool)
@@ -200,9 +201,11 @@ curl -X PATCH http://127.0.0.1:4000/http2 -d 'abc=123'
 
 > 流入和流出流量可以是 http1.x，但是 http1.x 並不支持數據流，它可能會等到請求或響應流量傳輸完畢才傳輸到對端。通常不建議使用 http1.x
 
-從 v0.0.3 開始 websocket 支持 **fast** 屬性，如果設置爲 true，它將只使用 websocket 建立連接，在連接建立後直接使用 tcp 傳輸數據
+- 從 v0.0.3 開始 websocket 支持 **fast** 屬性，如果設置爲 true，它將只使用 websocket 建立連接，在連接建立後直接使用 tcp 傳輸數據
 
-從 v0.0.4 開始 http/websocket dialer 支持 **header**屬性( map\[string\]\[\]string ) 用於設置自定義的 http header
+- 從 v0.0.4 開始 http/websocket dialer 支持 **header**屬性( map\[string\]\[\]string ) 用於設置自定義的 http header
+
+- 從 v0.0.10 開始， http2 client 支持 ping/pingTimeout 用於啓用 http2 的ping 包用於維持長連接(默認爲 40s/15s)。http2 server 支持 idleTimeout 設置服務端自動清除空閒的連接(默認 180s)
 
 # unix
 
@@ -625,6 +628,26 @@ local proxy = {
     ],
 }
 ```
+# socks5
+
+從 v0.0.8 開始對於 dialer/bridge 支持使用 socks5 進行撥號，這可以方便通過 socks5 接入專用網路。需要將原本 dialer/bridge 的配置稍微修改:
+
+```
+{
+  // Scheme 改爲 socks 指定使用 socks5 進行撥號，後面是 socks5 代理服務器地址
+  url: 'socks://127.0.0.1:1081',
+  // socks5 的配置項目
+  socks: {
+    // socks5 用戶名，沒有則不用填
+    // user:'',
+    // socks5 密碼，沒有則不用填
+    // password:'',
+    // 通過代理要連接的最終地址
+    connect: '10.89.0.1:2004',
+  },
+},
+```
+
 
 # sniproxy
 從 v0.0.9 開始支持 sniproxy，它不會參與到 tls 加解密中去，它從客戶端讀取出 ClientHello 中的 sni，然後依據 sni 將流量原樣轉發到不同的後端。這可以爲不同 tls 後端提供一個共用的連接入口
