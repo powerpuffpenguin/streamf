@@ -282,7 +282,9 @@ func (l *Listener) Serve() (e error) {
 	}
 }
 func (l *Listener) serve(c net.Conn) {
+	addr:=c.RemoteAddr()
 	timer := time.NewTimer(l.timeout)
+	log:=l.log.With(`addr`,addr)
 	var (
 		serverName string
 		sniBuffer  []byte
@@ -303,21 +305,21 @@ func (l *Listener) serve(c net.Conn) {
 		c.Close()
 		return
 	case <-timer.C:
-		l.log.Debug(`sniff timeout`)
+		log.Debug(`sniff timeout`)
 		c.Close()
 		return
 	case <-done:
 	}
 	if sniError != nil {
-		l.log.Warn(`get sni fail`, `error`, sniError)
+		log.Warn(`get sni fail`, `error`, sniError)
 		if !sniClosed && l.fallback != nil {
 			dst, err := l.fallback.Connect(context.Background())
 			if err != nil {
-				l.log.Warn(`connect remote fail`, `error`, err)
+				log.Warn(`connect remote fail`, `error`, err)
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging fallback`, `dialer`, l.fallback.Tag(), `remote`, dst.RemoteAddr().Addr)
+			log.Info(`sni bridging fallback`, `dialer`, l.fallback.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -328,16 +330,17 @@ func (l *Listener) serve(c net.Conn) {
 		c.Close()
 		return
 	}
+	log=log.With(`serverName`,serverName)
 
 	// 優先匹配最精準的路由
 	if matcher, ok := l.accuracy[serverName]; ok {
 		dst, err := matcher.dialer.Connect(context.Background())
 		if err != nil {
-			l.log.Warn(`connect remote fail`, `error`, err)
+			log.Warn(`connect remote fail`, `error`, err)
 			c.Close()
 			return
 		}
-		l.log.Info(`sni bridging accuracy`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
+		log.Info(`sni bridging accuracy`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 		network.Bridging(&sniConn{
 			Conn:   c,
 			buffer: sniBuffer,
@@ -350,11 +353,11 @@ func (l *Listener) serve(c net.Conn) {
 		if matcher.Match(serverName) {
 			dst, err := matcher.dialer.Connect(context.Background())
 			if err != nil {
-				l.log.Warn(`connect remote fail`, `error`, err)
+				log.Warn(`connect remote fail`, `error`, err)
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging order`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
+			log.Info(`sni bridging order`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -368,11 +371,11 @@ func (l *Listener) serve(c net.Conn) {
 		if matcher.Match(serverName) {
 			dst, err := matcher.dialer.Connect(context.Background())
 			if err != nil {
-				l.log.Warn(`connect remote fail`, `error`, err)
+				log.Warn(`connect remote fail`, `error`, err)
 				c.Close()
 				return
 			}
-			l.log.Info(`sni bridging regexp`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
+			log.Info(`sni bridging regexp`, `dialer`, matcher.dialer.Tag(), `remote`, dst.RemoteAddr().Addr)
 			network.Bridging(&sniConn{
 				Conn:   c,
 				buffer: sniBuffer,
@@ -385,11 +388,11 @@ func (l *Listener) serve(c net.Conn) {
 	if l.def != nil {
 		dst, err := l.def.Connect(context.Background())
 		if err != nil {
-			l.log.Warn(`connect remote fail`, `error`, err)
+			log.Warn(`connect remote fail`, `error`, err)
 			c.Close()
 			return
 		}
-		l.log.Info(`sni bridging default`, `dialer`, l.def.Tag(), `remote`, dst.RemoteAddr().Addr)
+		log.Info(`sni bridging default`, `dialer`, l.def.Tag(), `remote`, dst.RemoteAddr().Addr)
 		network.Bridging(&sniConn{
 			Conn:   c,
 			buffer: sniBuffer,
